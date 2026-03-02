@@ -18,6 +18,7 @@ from app.engine.watchdog import MarketWatchdog
 from app.metaapi.adapter import MetaApiAdapter
 from app.models.market import TickData
 from app.risk import RiskManager
+from app.risk.trade_manager import ActiveTradeManager
 from news.manager import NewsManager
 
 
@@ -40,6 +41,7 @@ class TradingBot:
         executor: SignalExecutor,
         watchdog: MarketWatchdog,
         strategy_manager: StrategyManager,
+        active_trade_manager: ActiveTradeManager,
         gemini=None,
     ):
         """
@@ -65,6 +67,7 @@ class TradingBot:
         self.gemini = gemini
 
         self.strategies = strategy_manager
+        self.active_trade_manager = active_trade_manager
         self.notification_callback: Callable[[str], None] | None = None
 
     def register_notification_callback(self, callback: Callable[[str], None]) -> None:
@@ -87,6 +90,7 @@ class TradingBot:
         logger.info(msg.BOT_START)
 
         self._initialize_strategies()
+        await self.active_trade_manager.start()
         await self.news_manager.start()
         await self.watchdog.start()
 
@@ -129,6 +133,7 @@ class TradingBot:
         if self.data_feed:
             await self.data_feed.stop()
 
+        await self.active_trade_manager.stop()
         await self.news_manager.stop()
         await self.watchdog.stop()
         logger.success(msg.BOT_STOP_COMPLETE)

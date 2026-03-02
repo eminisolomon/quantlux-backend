@@ -65,8 +65,10 @@ async def init_trading_logic(
     executor = container.resolve(SignalExecutor)
     watchdog = container.resolve(MarketWatchdog)
     from app.engine.strategy_manager import StrategyManager
+    from app.risk.trade_manager import ActiveTradeManager
 
     strategy_manager = container.resolve(StrategyManager)
+    active_trade_manager = container.resolve(ActiveTradeManager)
 
     # Inject gemini if available
     if gemini:
@@ -82,6 +84,7 @@ async def init_trading_logic(
         executor=executor,
         watchdog=watchdog,
         strategy_manager=strategy_manager,
+        active_trade_manager=active_trade_manager,
         gemini=gemini,
     )
 
