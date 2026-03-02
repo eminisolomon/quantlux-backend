@@ -21,7 +21,10 @@ from app.engine.lifecycle import (
     synchronize_state,
 )
 from app.engine.queue import order_queue
+from app.engine.health import HealthMonitor
+from app.engine.api import app as fastapi_app
 from app.telegram.bot import TelegramBot
+import uvicorn
 
 
 async def setup_signals(stop_event: asyncio.Event):
@@ -58,6 +61,7 @@ def setup_bot_callbacks(
             asyncio.run_coroutine_threadsafe(telegram_bot.send_message(message), loop)
 
     trading_bot.register_notification_callback(notify_telegram)
+    return notify_telegram
 
 
 async def main():
@@ -114,12 +118,27 @@ async def main():
         stop_event = asyncio.Event()
 
         await setup_signals(stop_event)
-        setup_bot_callbacks(trading_bot, telegram_bot, loop)
+        notify_telegram = setup_bot_callbacks(trading_bot, telegram_bot, loop)
+
+        # Initialize health monitor
+        health_monitor = HealthMonitor(broker, telegram_notify_cb=notify_telegram)
+
+        # Configure API Server
+        fastapi_app.state.tracker = tracker
+        fastapi_app.state.trading_bot = trading_bot
+        fastapi_app.state.health_monitor = health_monitor
+
+        api_config = uvicorn.Config(
+            fastapi_app, host="0.0.0.0", port=8000, log_level="info"
+        )
+        api_server = uvicorn.Server(api_config)
 
         # Launch background tasks and service loops.
         await order_queue.start()
         await trading_bot.start()
         await telegram_bot.start()
+        await health_monitor.start()
+        api_task = asyncio.create_task(api_server.serve())
 
         logger.success(msg.RUNNING_MESSAGE)
 
@@ -129,6 +148,15 @@ async def main():
 
         # --- GRACEFUL SHUTDOWN ---
         logger.info(msg.SHUTDOWN_START)
+
+        # Stop API server gracefully
+        api_server.should_exit = True
+        try:
+            await api_task
+        except asyncio.CancelledError:
+            pass
+
+        await health_monitor.stop()
         await order_queue.stop()
         await telegram_bot.stop()
         await trading_bot.stop()
