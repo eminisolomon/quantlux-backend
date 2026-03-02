@@ -24,7 +24,9 @@ class SignalExecutor:
         self.notification_callback: Callable[[str], None] | None = None
         self.split_manager = SplitOrderManager(self.broker, self._notify)
 
-    async def process_signal(self, signal: TradeSignal, strategy: BaseStrategy) -> None:
+    async def process_signal(
+        self, signal: TradeSignal, strategy: BaseStrategy | None = None
+    ) -> None:
         """Process a validated TradeSignal model."""
         try:
             action = signal.action
@@ -107,7 +109,9 @@ class SignalExecutor:
             # Check for Take Profits (Split Execution)
             tp_levels = signal.tp_levels
             take_profit = signal.take_profit
-            comment = signal.comment or strategy.__class__.__name__
+            comment = signal.comment
+            if not comment and strategy:
+                comment = strategy.__class__.__name__
 
             if tp_levels and isinstance(tp_levels, list) and len(tp_levels) > 1:
                 await self.split_manager.execute(

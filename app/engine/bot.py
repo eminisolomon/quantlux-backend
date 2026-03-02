@@ -18,7 +18,6 @@ from app.engine.watchdog import MarketWatchdog
 from app.metaapi.adapter import MetaApiAdapter
 from app.models.market import TickData
 from app.risk import RiskManager
-from app.strategies.rsi.strategy import RSIStrategy
 from news.manager import NewsManager
 
 
@@ -40,6 +39,7 @@ class TradingBot:
         trade_executor: MetaApiAdapter,
         executor: SignalExecutor,
         watchdog: MarketWatchdog,
+        strategy_manager: StrategyManager,
         gemini=None,
     ):
         """
@@ -64,7 +64,7 @@ class TradingBot:
         self.watchdog = watchdog
         self.gemini = gemini
 
-        self.strategies = StrategyManager(self.trade_executor)
+        self.strategies = strategy_manager
         self.notification_callback: Callable[[str], None] | None = None
 
     def register_notification_callback(self, callback: Callable[[str], None]) -> None:
@@ -105,19 +105,17 @@ class TradingBot:
         """
         Register and configure trading strategies based on account settings.
 
-        This private method scans enabled symbols and attaches the globally
-        configured strategy (e.g., RSIStrategy) to each.
+        This private method scans enabled symbols and attaches the Master Strategy
+        (StrategyAdapter) which handles multiple sub-strategies including ICT and RSI.
         """
         symbols = self.symbol_manager.get_enabled_symbols()
         for symbol in symbols:
-            if settings.USE_RSI_STRATEGY:
-                strategy = RSIStrategy(
-                    symbol, {"rsi_period": 14, "oversold": 30, "overbought": 70}
+            self.strategies.add_high_accuracy_strategies(symbol)
+            logger.debug(
+                msg.STRATEGY_REG_DEBUG.format(
+                    strategy="MasterStrategyAdapter", symbol=symbol
                 )
-                self.strategies.add_strategy(symbol, strategy)
-                logger.debug(
-                    msg.STRATEGY_REG_DEBUG.format(strategy="RSIStrategy", symbol=symbol)
-                )
+            )
 
     async def stop(self) -> None:
         """
@@ -190,18 +188,25 @@ class TradingBot:
                 return
 
             # Step 3: Core Signal Generation
-            tick_dict = tick.model_dump()
-            signals = await self.strategies.process_tick(symbol, tick_dict)
+            # We use the Master Strategy Adapter for confluence and multi-strategy processing
+            unified_signal = self.strategies.analyze_high_accuracy(symbol)
 
             # Step 4: Execution Pipeline
             from app.models.signal import TradeSignal
 
-            for signal_data, strategy in signals:
-                if isinstance(signal_data, dict):
-                    signal = TradeSignal(symbol=symbol, **signal_data)
-                else:
-                    signal = signal_data
-                await self.executor.process_signal(signal, strategy)
+            if unified_signal:
+                signal = TradeSignal(
+                    action=unified_signal.action,
+                    symbol=symbol,
+                    price=unified_signal.entry_price,
+                    stop_loss=unified_signal.stop_loss,
+                    take_profit=unified_signal.take_profit,
+                    confidence=unified_signal.confidence,
+                    reason=unified_signal.reason,
+                    comment=unified_signal.strategy_name,
+                    metadata=unified_signal.metadata,
+                )
+                await self.executor.process_signal(signal, strategy=None)
 
         except Exception as e:
             logger.error(msg.BOT_TICK_ERROR.format(symbol=symbol, error=e))

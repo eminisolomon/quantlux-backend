@@ -53,6 +53,10 @@ class StrategyAdapter:
             min_risk_reward=2.0,
         )
 
+        from app.engine.regime import MarketRegimeDetector
+
+        self.regime_detector = MarketRegimeDetector(adx_period=14, adx_threshold=25.0)
+
         # Active strategies
         self.active_strategies = {
             "smart_money": True,
@@ -60,6 +64,30 @@ class StrategyAdapter:
             "rsi": True,
             "momentum": True,
         }
+
+    def _update_regime_filters(self, data: dict[str, Any]) -> None:
+        """Dynamically toggle strategies based on the current market regime."""
+        df_primary = data.get("H4") or data.get("primary")
+        if df_primary is None or df_primary.empty:
+            return
+
+        regime = self.regime_detector.detect(df_primary)
+        logger.debug(f"{self.symbol} Current Regime: {regime.value}")
+
+        from app.engine.regime import MarketRegimeType
+
+        if regime in [MarketRegimeType.TRENDING_BULL, MarketRegimeType.TRENDING_BEAR]:
+            # Trending markets: Follow trend with ICT and momentum
+            self.active_strategies["mean_reversion"] = False
+            self.active_strategies["rsi"] = False
+            self.active_strategies["smart_money"] = True
+            self.active_strategies["momentum"] = True
+        else:
+            # Ranging or volatile markets: Mean reversion works best
+            self.active_strategies["smart_money"] = False
+            self.active_strategies["momentum"] = False
+            self.active_strategies["mean_reversion"] = True
+            self.active_strategies["rsi"] = True
 
     def analyze(self) -> UnifiedSignal | None:
         """Analyze market with all active strategies."""
@@ -70,6 +98,8 @@ class StrategyAdapter:
             if not data:
                 logger.warning(f"No market data available for {self.symbol}")
                 return None
+
+            self._update_regime_filters(data)
 
             # Try Smart Money ICT strategy
             if self.active_strategies.get("smart_money"):
@@ -110,6 +140,8 @@ class StrategyAdapter:
 
             if not data:
                 return signals
+
+            self._update_regime_filters(data)
 
             if self.active_strategies.get("smart_money"):
                 signals["smart_money"] = self._analyze_ict(data)

@@ -59,5 +59,11 @@ def init_container(metaapi_adapter: MetaApiAdapter) -> None:
 
     executor = SignalExecutor(risk_manager=risk_manager, broker=metaapi_adapter)
     container.register(SignalExecutor, executor)
+
+    from app.engine.strategy_manager import StrategyManager
+
+    strategy_manager = StrategyManager(metaapi=metaapi_adapter)
+    container.register(StrategyManager, strategy_manager)
+
     container.register(MarketWatchdog, MarketWatchdog())
     return container
