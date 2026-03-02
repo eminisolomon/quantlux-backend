@@ -11,34 +11,11 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=postgresql://quantlux_user:quantlux_pass@db:5432/quantlux_db
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
       - quantlux_net
-
-  db:
-    image: postgres:15-alpine
-    container_name: quantlux_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: quantlux_user
-      POSTGRES_PASSWORD: quantlux_pass
-      POSTGRES_DB: quantlux_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U quantlux_user -d quantlux_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - quantlux_net
-    ports:
-      - "5432:5432"
 
   redis:
     image: redis:7-alpine
@@ -51,10 +28,6 @@ services:
       retries: 5
     networks:
       - quantlux_net
-
-volumes:
-  postgres_data:
-    name: quantlux_postgres_data
 
 networks:
   quantlux_net:

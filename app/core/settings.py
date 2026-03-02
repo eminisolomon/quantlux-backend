@@ -48,9 +48,6 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-1.5-flash"
 
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:12345@localhost:5432/quantlux_db"
-
     # Trading Logic & Risk
     MAX_DAILY_DRAWDOWN_PCT: float = 5.0
     MAX_TOTAL_DRAWDOWN_PCT: float = 15.0
