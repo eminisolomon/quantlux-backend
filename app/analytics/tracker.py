@@ -153,6 +153,12 @@ class PerformanceTracker:
         sortino = (avg_return - risk_free_rate / 252) / downside_std * np.sqrt(252)
         return float(sortino)
 
+    def calculate_recovery_factor(self, net_profit: float, max_drawdown_value: float) -> float:
+        """Calculate Recovery Factor (Net Profit / Max Drawdown)."""
+        if max_drawdown_value == 0:
+            return float("inf") if net_profit > 0 else 0.0
+        return net_profit / max_drawdown_value
+
     def calculate_max_drawdown(self) -> DrawdownInfo:
         """Calculate maximum drawdown (peak-to-trough decline)."""
         if len(self.equity_curve) < 2:
@@ -243,6 +249,7 @@ class PerformanceTracker:
                 profit_factor=0.0,
                 sharpe_ratio=0.0,
                 sortino_ratio=0.0,
+                recovery_factor=0.0,
                 max_drawdown_pct=0.0,
                 max_drawdown_value=0.0,
                 current_drawdown=0.0,
@@ -266,6 +273,7 @@ class PerformanceTracker:
             profit_factor=self.calculate_profit_factor(),
             sharpe_ratio=self.calculate_sharpe_ratio(),
             sortino_ratio=self.calculate_sortino_ratio(),
+            recovery_factor=self.calculate_recovery_factor(net_profit, dd_info.max_dd_value),
             max_drawdown_pct=dd_info.max_dd_pct,
             max_drawdown_value=dd_info.max_dd_value,
             current_drawdown=self.get_current_drawdown(),
@@ -302,6 +310,7 @@ Avg Trade: ${report.avg_trade:.2f}
 {sharpe_emoji} *Risk Metrics*
 Sharpe Ratio: {report.sharpe_ratio:.2f}
 Sortino Ratio: {report.sortino_ratio:.2f}
+Recovery Factor: {report.recovery_factor:.2f}
 Max Drawdown: {report.max_drawdown_pct:.2f}%
 Current DD: {report.current_drawdown:.2f}%
         """.strip()

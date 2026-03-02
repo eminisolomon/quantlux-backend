@@ -96,6 +96,7 @@ class PerformanceReport(BaseModel):
     profit_factor: float
     sharpe_ratio: float
     sortino_ratio: float
+    recovery_factor: float
     max_drawdown_pct: float
     max_drawdown_value: float
     current_drawdown: float
