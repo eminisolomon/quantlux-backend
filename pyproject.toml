@@ -14,33 +14,27 @@ dependencies = [
     "pydantic-settings>=2.7.0",
     "python-dotenv>=1.2.1",
     "PyYAML>=6.0.1",
-
     # Network & Async
     "requests>=2.32.5",
     "aiohttp>=3.7.4",
     "httpx>=0.28.1",
     "websockets>=13.0",
     "lxml",
-
     # Scheduling & Notifications
     "apscheduler>=3.11.2",
     "python-telegram-bot>=22.6",
     "loguru>=0.7.3",
-
     # Task Queue
     "celery>=5.4.0",
     "redis>=5.2.1",
-
     # Analytics & Performance
     "scipy>=1.17.0",
     "matplotlib>=3.10.8",
     "ipykernel>=6.29.5",
     "notebook>=7.3.2",
     "jupyterlab>=4.3.5",
-
     # MetaAPI
     "metaapi-cloud-sdk>=29.0.0",
-
     # AI / Gemini
     "google-genai>=1.0.0",
     "backtrader>=1.9.78.123",

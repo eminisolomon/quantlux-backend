@@ -114,6 +114,7 @@ TRACKER_LOAD_ERROR = "Error loading trades: {error}"
 TRACKER_TRADE_RECORDED = "Trade recorded: {symbol} Profit: {profit}"
 TRACKER_SAVE_ERROR = "Error saving trades: {error}"
 TRACKER_LOADED = "Loaded {count} trades into performance tracker."
+TRACKER_NO_HISTORY = "No historical trades found."
 
 EXECUTOR_SYM_INFO_FAILED = "❌ Cannot execute: failed to get symbol info for {symbol}"
 EXECUTOR_ZERO_VOLUME = "⚠️ Calculated volume is 0 for {symbol}. Skipping."

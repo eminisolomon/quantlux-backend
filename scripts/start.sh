@@ -21,18 +21,13 @@ banner() {
 
 check_env() {
     echo -e "${YELLOW}[1/2] Checking Environment...${NC}"
-    if [ -d ".venv" ]; then
-        source .venv/bin/activate
-    elif [ -d "venv" ]; then
-        source venv/bin/activate
-    fi
-    PYTHON_VER=$(python --version 2>&1)
+    PYTHON_VER=$(uv run python --version 2>&1)
     echo "Using: $PYTHON_VER"
 }
 
 validate() {
     echo -e "${YELLOW}[2/2] Validating Configuration...${NC}"
-    python -c "from app.core.settings import settings; print(f'✓ Loaded settings for env: {settings.TRADING_ENV}')" 2>/dev/null
+    uv run python -c "from app.core.settings import settings; print(f'✓ Loaded settings for env: {settings.TRADING_ENV}')" 2>/dev/null
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✓ Configuration valid${NC}"
     else
@@ -46,12 +41,12 @@ run() {
     echo "----------------------------------------"
     echo -e "${GREEN}Logs will appear below:${NC}"
     echo ""
-    python main.py
+    uv run python main.py
 }
 
 news() {
     echo -e "${YELLOW}[News] Fetching Economic Calendar...${NC}"
-    python -m news.calendar
+    uv run python -m news.calendar
 }
 
 # Run specific function if provided as argument

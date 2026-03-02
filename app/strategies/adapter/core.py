@@ -49,7 +49,6 @@ class StrategyAdapter:
         self.momentum_strategy = MomentumStrategy(
             symbol=symbol,
             timeframe="H1",
-            min_confidence=70.0,
             min_risk_reward=2.0,
         )
 
