@@ -1,0 +1,38 @@
+# Symbol configuration
+
+symbols:
+  - symbol: EURUSD
+    enabled: true
+    max_positions: 2
+  - symbol: GBPUSD
+    enabled: true
+    max_positions: 1
+  - symbol: XAUUSD
+    enabled: true
+    max_positions: 1
+  - symbol: USDJPY
+    enabled: true
+    max_positions: 1
+  - symbol: AUDUSD
+    enabled: true
+    max_positions: 1
+
+  # Deriv Synthetic Indices
+  - symbol: Volatility 75 Index
+    enabled: true
+    max_positions: 1
+  - symbol: Volatility 100 Index
+    enabled: true
+    max_positions: 1
+  - symbol: Boom 1000 Index
+    enabled: true
+    max_positions: 1
+  - symbol: Crash 1000 Index
+    enabled: true
+    max_positions: 1
+  - symbol: Step Index
+    enabled: true
+    max_positions: 2
+  - symbol: Jump 10 Index
+    enabled: true
+    max_positions: 1

@@ -1,0 +1,66 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build artifacts
+build/
+dist/
+
+# Test artifacts
+.pytest_cache/
+.ruff_cache/
+tests/
+htmlcov/
+.coverage
+coverage.xml
+
+# Logs (mounted as a volume at runtime)
+logs/
+
+# Jupyter
+*.ipynb_checkpoints/
+
+# Conda
+/miniconda3/
+.conda/
+conda-bld/
+*.tar.bz2
+*.conda
+
+# Data files
+data/processed/
+data/*.db
+
+# Git & IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Documentation
+docs/
+README.md
+
+# Monitoring config (not needed in the image)
+monitoring/
+
+# Env files — loaded via docker-compose env_file, never baked into image
+.env
+.env.*
+
+# Scripts not needed in the container
+Makefile
+environment.yml
+
+# OS
+*.swp
+*.swo
+.DS_Store
