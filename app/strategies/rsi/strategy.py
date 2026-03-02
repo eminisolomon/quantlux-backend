@@ -10,7 +10,7 @@ from app.indicators.rsi import (
     RSIDivergence,
 )
 from app.indicators.utils import is_falling, is_rising
-from app.models import TradeSignal, RSISignal
+from app.schemas import TradeSignal, RSISignal
 from app.strategies.filters import FilterMixin
 from app.strategies.rsi.analysis import RSIAnalyzer
 

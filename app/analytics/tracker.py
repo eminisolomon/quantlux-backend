@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from app.models import (
+from app.schemas import (
     AverageTradeStats,
     DrawdownInfo,
     PerformanceReport,

@@ -9,7 +9,7 @@ from app.core.settings import settings
 from app.utils.logger import logger
 
 
-from app.models import NewsEvent
+from app.schemas import NewsEvent
 
 
 class EconomicCalendar:

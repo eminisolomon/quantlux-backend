@@ -1,7 +1,7 @@
 from typing import Any
 
 from app.metaapi.adapter import MetaApiAdapter
-from app.models.metaapi import TradeOrder, TradePosition
+from app.schemas.metaapi import TradeOrder, TradePosition
 
 
 class AccountService:

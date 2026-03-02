@@ -3,7 +3,7 @@
 from typing import Any
 
 from app.core.enums import AccountType, SignalAction
-from app.models.metaapi import (
+from app.schemas.metaapi import (
     AccountInfo,
     SymbolInfo,
     TradeOrder,

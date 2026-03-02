@@ -3,7 +3,7 @@ from datetime import datetime
 
 from app.core import messages as msg
 from app.core.settings import settings
-from app.models.market import TickData
+from app.schemas.market import TickData
 from app.utils.logger import logger
 
 

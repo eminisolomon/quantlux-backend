@@ -1,4 +1,4 @@
-from app.models import AccountInfo, SymbolInfo
+from app.schemas import AccountInfo, SymbolInfo
 from app.risk.sizing.core import normalize_volume
 from app.risk.sizing.strategies import calculate_risk_lot
 from app.utils.logger import logger

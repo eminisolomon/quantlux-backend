@@ -27,7 +27,7 @@ class ParameterOptimizer:
         """Run grid search on historical data to find best parameters."""
         logger.info("Starting Grid Search Optimization")
 
-        cerebro = bt.Cerebro(optreturn=False)
+        cerebro = bt.Cerebro(optreturn=False, maxcpus=1)
 
         # Add analyzers
         cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name="sharpe")

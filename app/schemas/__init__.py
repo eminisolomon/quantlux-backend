@@ -1,14 +1,14 @@
 """Schemas package - consolidated imports."""
 
-from app.models.analytics import (
+from app.schemas.analytics import (
     AverageTradeStats,
     DrawdownInfo,
     PerformanceReport,
     PerformanceStats,
     Trade,
 )
-from app.models.market import TickData
-from app.models.metaapi import (
+from app.schemas.market import TickData
+from app.schemas.metaapi import (
     AccountInfo,
     OrderSendResult,
     SymbolInfo,
@@ -17,9 +17,9 @@ from app.models.metaapi import (
     TradePosition,
     TradeRequest,
 )
-from app.models.news import NewsEvent
-from app.models.signal import TradeSignal
-from app.models.rsi import RSISignal
+from app.schemas.news import NewsEvent
+from app.schemas.signal import TradeSignal
+from app.schemas.rsi import RSISignal
 
 __all__ = [
     "AccountInfo",

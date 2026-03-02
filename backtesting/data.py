@@ -31,7 +31,7 @@ def load_sample_data(
     if not end:
         end = datetime.now().strftime("%Y-%m-%d")
 
-    dates = pd.date_range(start=start, end=end, freq="H")
+    dates = pd.date_range(start=start, end=end, freq="h")
     n = len(dates)
 
     # Generate random walk data

@@ -4,7 +4,7 @@ from collections.abc import Callable
 from app.core import messages as msg
 from app.core.settings import settings
 from app.metaapi.adapter import MetaApiAdapter
-from app.models.market import TickData
+from app.schemas.market import TickData
 from app.utils.logger import logger
 
 

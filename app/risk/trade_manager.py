@@ -3,7 +3,7 @@ from typing import Any
 
 from app.core import logger, settings
 from app.core.protocols import BrokerProtocol
-from app.models.metaapi import TradePosition, SymbolInfo
+from app.schemas.metaapi import TradePosition, SymbolInfo
 
 
 class ActiveTradeManager:

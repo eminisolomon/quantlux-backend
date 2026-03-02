@@ -10,7 +10,7 @@ from app.strategies.mean_rev import (
     MeanReversionSignal,
 )
 from app.strategies.momentum import MomentumSignal, MomentumStrategy
-from app.models import RSISignal
+from app.schemas import RSISignal
 from app.strategies.smc import ICTSignal, SmartMoneyStrategy
 from app.utils.logger import logger
 from app.strategies.rsi.strategy import RSIStrategy

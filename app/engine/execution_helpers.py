@@ -8,7 +8,7 @@ from app.core import messages as msg
 from app.core.enums import SignalAction
 from app.engine.queue import OrderTask, order_queue
 from app.metaapi.orders import OrderFactory
-from app.models import OrderSendResult
+from app.schemas import OrderSendResult
 from app.utils.notifiers import get_trade_notifier
 
 

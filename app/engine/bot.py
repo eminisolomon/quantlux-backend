@@ -16,7 +16,7 @@ from app.engine.feed import DataFeed
 from app.engine.strategy_manager import StrategyManager
 from app.engine.watchdog import MarketWatchdog
 from app.metaapi.adapter import MetaApiAdapter
-from app.models.market import TickData
+from app.schemas.market import TickData
 from app.risk import RiskManager
 from app.risk.trade_manager import ActiveTradeManager
 from news.manager import NewsManager
@@ -197,7 +197,7 @@ class TradingBot:
             unified_signal = self.strategies.analyze_high_accuracy(symbol)
 
             # Step 4: Execution Pipeline
-            from app.models.signal import TradeSignal
+            from app.schemas.signal import TradeSignal
 
             if unified_signal:
                 signal = TradeSignal(

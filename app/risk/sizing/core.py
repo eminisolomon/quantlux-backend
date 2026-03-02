@@ -1,4 +1,4 @@
-from app.models import SymbolInfo
+from app.schemas import SymbolInfo
 from app.utils.logger import logger
 
 

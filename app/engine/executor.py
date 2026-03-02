@@ -6,8 +6,8 @@ from app.core.enums import SignalAction
 from app.core.protocols import BrokerProtocol
 from app.engine.execution_helpers import execute_order
 from app.engine.splitter import SplitOrderManager
-from app.models.metaapi import SymbolInfo
-from app.models.signal import TradeSignal
+from app.schemas.metaapi import SymbolInfo
+from app.schemas.signal import TradeSignal
 from app.risk import RiskManager
 from app.risk.ai_guard import evaluate_trade as ai_evaluate_trade
 from app.risk.sizing.strategies import calculate_risk_lot

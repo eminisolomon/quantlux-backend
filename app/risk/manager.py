@@ -9,7 +9,7 @@ from app.core.exceptions import (
 )
 from app.core.protocols import AccountServiceProvider, BrokerProtocol
 from app.core.settings import settings
-from app.models.metaapi import AccountInfo, SymbolInfo
+from app.schemas.metaapi import AccountInfo, SymbolInfo
 from app.risk.correlation import CorrelationManager
 from app.risk.drawdown import DrawdownManager
 from app.utils.logger import logger

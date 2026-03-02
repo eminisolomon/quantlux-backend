@@ -1,6 +1,6 @@
 from typing import Any, Protocol, runtime_checkable
 
-from app.models.metaapi import AccountInfo, SymbolInfo, TradeOrder, TradePosition
+from app.schemas.metaapi import AccountInfo, SymbolInfo, TradeOrder, TradePosition
 
 
 @runtime_checkable

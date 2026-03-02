@@ -6,7 +6,7 @@ from app.core.enums import Impact
 from app.core import messages as msg
 from app.core.settings import settings
 from app.utils.logger import logger
-from app.models import NewsEvent
+from app.schemas import NewsEvent
 from news.calendar import EconomicCalendar
 
 

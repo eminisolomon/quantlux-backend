@@ -1,6 +1,6 @@
 from app.core.enums import SignalAction
 from app.core.settings import settings
-from app.models import TradeRequest
+from app.schemas import TradeRequest
 
 
 class OrderFactory:

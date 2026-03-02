@@ -1,7 +1,7 @@
 import numpy as np
 from pydantic import BaseModel
 
-from app.models.analytics import Trade
+from app.schemas.analytics import Trade
 
 
 class SimulationResults(BaseModel):

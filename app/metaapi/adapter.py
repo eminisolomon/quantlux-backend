@@ -11,7 +11,7 @@ from app.metaapi.mappers import (
     map_trade_order,
     map_trade_position,
 )
-from app.models.metaapi import (
+from app.schemas.metaapi import (
     AccountInfo,
     SymbolInfo,
     TradeOrder,

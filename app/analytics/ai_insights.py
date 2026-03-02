@@ -4,7 +4,7 @@ from app.ai.gemini_client import GeminiClient
 from app.ai.prompts import TRADE_JOURNAL_PROMPT, TRADE_JOURNAL_SYSTEM
 from app.analytics.tracker import PerformanceTracker
 from app.core.decorators import fallback_on_failure, require_feature
-from app.models import Trade
+from app.schemas import Trade
 
 
 def _format_recent_trades(trades: list[Trade], limit: int = 10) -> str:
