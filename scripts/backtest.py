@@ -10,7 +10,12 @@ Usage:
 import argparse
 import sys
 
-from backtesting.engine import BacktestEngine, load_sample_data
+from backtesting import (
+    BacktestEngine,
+    load_sample_data,
+    QuantLuxStrategy,
+    ParameterOptimizer,
+)
 
 from app.utils.logger import logger
 
@@ -74,6 +79,12 @@ def main():
         help="Commission as fraction (default: 0.0002 = 2 pips)",
     )
 
+    parser.add_argument(
+        "--optimize", action="store_true", help="Run Grid Search Optimization"
+    )
+
+    parser.add_argument("--wfa", action="store_true", help="Run Walk-Forward Analysis")
+
     args = parser.parse_args()
 
     # Interactive Mode
@@ -124,7 +135,52 @@ def main():
             logger.error("No data loaded. Cannot run backtest.")
             return 1
 
-        # Setup strategy parameters
+        if args.wfa or args.optimize:
+            optimizer = ParameterOptimizer(initial_cash=args.cash)
+            # Define a small parameter grid for demonstration
+            param_grid = {
+                "rsi_period": range(10, 18, 2),
+                "rsi_oversold": range(25, 35, 5),
+                "rsi_overbought": range(65, 75, 5),
+            }
+            if args.wfa:
+                logger.info("Running Walk-Forward Analysis...")
+                results = optimizer.walk_forward_analysis(
+                    data=data,
+                    strategy_class=QuantLuxStrategy,
+                    param_grid=param_grid,
+                    commission=args.commission,
+                )
+                print("\n" + "=" * 50)
+                print(" WALK-FORWARD ANALYSIS RESULTS")
+                print("=" * 50)
+                metrics = results["overall_metrics"]
+                print(f"  Overall Net Profit: ${metrics['net_profit']:.2f}")
+                print(f"  Overall ROI:        {metrics['roi']:.2f}%")
+                print(f"  Total Trades:       {metrics['total_trades']}")
+                print(f"  Overall Win Rate:   {metrics['win_rate']:.1f}%")
+                print(f"  Profit Factor:      {metrics['profit_factor']:.2f}")
+                print("=" * 50 + "\n")
+            else:
+                logger.info("Running Grid Search Optimization...")
+                results = optimizer.run_grid_search(
+                    data=data,
+                    strategy_class=QuantLuxStrategy,
+                    param_grid=param_grid,
+                    commission=args.commission,
+                )
+                print("\n" + "=" * 50)
+                print(" OPTIMIZATION RESULTS")
+                print("=" * 50)
+                print(f"  Best Params: {results['best_params']}")
+                best_metrics = results["best_metrics"]
+                if best_metrics:
+                    print(f"  Best Net Profit: ${best_metrics['net_profit']:.2f}")
+                    print(f"  Best ROI: {best_metrics['roi']:.2f}%")
+                print("=" * 50 + "\n")
+            return 0
+
+        # Setup standard strategy parameters
         strategy_params = {
             "rsi_period": args.rsi_period,
             "rsi_oversold": args.rsi_oversold,
@@ -138,7 +194,10 @@ def main():
         # Run backtest
         engine = BacktestEngine(initial_cash=args.cash)
         results = engine.run_backtest(
-            data=data, strategy_params=strategy_params, commission=args.commission
+            data=data,
+            strategy_class=QuantLuxStrategy,
+            strategy_params=strategy_params,
+            commission=args.commission,
         )
 
         # Print results

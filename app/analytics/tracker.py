@@ -153,7 +153,9 @@ class PerformanceTracker:
         sortino = (avg_return - risk_free_rate / 252) / downside_std * np.sqrt(252)
         return float(sortino)
 
-    def calculate_recovery_factor(self, net_profit: float, max_drawdown_value: float) -> float:
+    def calculate_recovery_factor(
+        self, net_profit: float, max_drawdown_value: float
+    ) -> float:
         """Calculate Recovery Factor (Net Profit / Max Drawdown)."""
         if max_drawdown_value == 0:
             return float("inf") if net_profit > 0 else 0.0
@@ -273,7 +275,9 @@ class PerformanceTracker:
             profit_factor=self.calculate_profit_factor(),
             sharpe_ratio=self.calculate_sharpe_ratio(),
             sortino_ratio=self.calculate_sortino_ratio(),
-            recovery_factor=self.calculate_recovery_factor(net_profit, dd_info.max_dd_value),
+            recovery_factor=self.calculate_recovery_factor(
+                net_profit, dd_info.max_dd_value
+            ),
             max_drawdown_pct=dd_info.max_dd_pct,
             max_drawdown_value=dd_info.max_dd_value,
             current_drawdown=self.get_current_drawdown(),
