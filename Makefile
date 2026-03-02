@@ -29,14 +29,14 @@ install:
 
 # Calendar
 news:
-	uv run  -m app.integrations.forex_factory.calendar
+	uv run --active -m app.integrations.forex_factory.calendar
 
 # Testing
 test:
 	pytest tests/
 
 backtest:
-	uv run  -m scripts.backtest
+	uv run --active -m scripts.backtest
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
