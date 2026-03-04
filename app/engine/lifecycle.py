@@ -1,4 +1,4 @@
-"""Application lifecycle: component initialization and state synchronization."""
+"""Application lifecycle: initialization and state sync."""
 
 from app.ai.gemini_client import GeminiClient
 from app.analytics.tracker import PerformanceTracker
@@ -22,22 +22,19 @@ from news.manager import NewsManager
 async def init_engine_services() -> (
     tuple[SymbolManager, CorrelationManager, NewsManager, MetaApiAdapter]
 ):
-    """Initialize core engine services."""
+    """Initialize brokers, managers, and data feed handlers."""
     logger.info(msg.APP_START)
     logger.info("Initializing MetaAPI Adapter...")
     symbol_manager = SymbolManager()
     correlation_manager = CorrelationManager()
     news_manager = NewsManager()
     broker = MetaApiAdapter()
-
-    # Initialize DI Container
     init_container(broker)
-
     return symbol_manager, correlation_manager, news_manager, broker
 
 
 def init_ai_services() -> GeminiClient:
-    """Initialize AI services (Gemini client)."""
+    """Initialize AI services."""
     gemini = GeminiClient()
     if gemini.is_available:
         logger.success(msg.AI_ENABLED)
@@ -53,19 +50,18 @@ async def init_trading_logic(
     broker: AbstractBroker,
     gemini: GeminiClient = None,
 ) -> tuple[DrawdownManager, PerformanceTracker, RiskManager, TradingBot]:
-    """Initialize trading logic, risk management, and the core bot using DI."""
-    # Resolve from DI
+    """Initialize trading logic, risk management, and the core bot via DI."""
     risk_manager = container.resolve(RiskManager)
     drawdown_manager = risk_manager.drawdown_manager
     executor = container.resolve(SignalExecutor)
     watchdog = container.resolve(MarketWatchdog)
+
     from app.engine.strategy_manager import StrategyManager
     from app.risk.trade_manager import ActiveTradeManager
 
     strategy_manager = container.resolve(StrategyManager)
     active_trade_manager = container.resolve(ActiveTradeManager)
 
-    # Inject gemini if available
     if gemini:
         executor.gemini = gemini
 
@@ -89,7 +85,7 @@ async def init_trading_logic(
 async def synchronize_state(
     metaapi: "MetaApiAdapter", drawdown: DrawdownManager, tracker: PerformanceTracker
 ) -> None:
-    """Synchronize local state with live account equity and trade history."""
+    """Sync local state with live account equity."""
     try:
         await metaapi.initialize()
         account_info = await metaapi.get_account_info()

@@ -1,7 +1,4 @@
-"""Shared execution helpers for order processing and notifications."""
-
-import asyncio
-from collections.abc import Callable
+"""Order execution helpers."""
 
 from app.core import logger
 from app.core import messages as msg
@@ -9,7 +6,6 @@ from app.core.enums import SignalAction
 from app.engine.queue import OrderTask, order_queue
 from app.metaapi.orders import OrderFactory
 from app.schemas import OrderSendResult
-from app.utils.notifiers import get_trade_notifier
 
 
 async def execute_order(
@@ -19,9 +15,8 @@ async def execute_order(
     stop_loss: float | None,
     take_profit: float | None,
     comment: str,
-    notification_callback: Callable[[str], None] | None = None,
 ) -> None:
-    """Execute a single order via the order queue."""
+    """Build and enqueue a market order, then log the result."""
     request = OrderFactory.create_market_order(
         symbol=symbol,
         volume=volume,
@@ -53,74 +48,18 @@ async def execute_order(
             price=result.get("price", 0.0),
             error=result.get("error"),
         )
-        _handle_execution_result(
-            order_result,
-            symbol,
-            action,
-            volume,
-            stop_loss,
-            take_profit,
-            comment,
-            notification_callback,
-        )
-
-
-def _handle_execution_result(
-    result: OrderSendResult,
-    symbol: str,
-    action: SignalAction,
-    volume: float,
-    sl: float | None = None,
-    tp: float | None = None,
-    comment: str = "",
-    notification_callback: Callable[[str], None] | None = None,
-) -> None:
-    """Log and notify about execution results."""
-    if result.success:
-        msg_str = msg.TRADE_SUCCESS.format(
-            symbol=symbol, action=action.value, volume=volume, price=result.price
-        )
-        logger.info(msg_str)
-        # Send rich notification
-        asyncio.create_task(
-            _notify_rich(
-                symbol=symbol,
-                action=action,
-                volume=volume,
-                price=result.price,
-                sl=sl,
-                tp=tp,
-                comment=comment,
+        if order_result.success:
+            logger.info(
+                msg.TRADE_SUCCESS.format(
+                    symbol=symbol,
+                    action=action.value,
+                    volume=volume,
+                    price=order_result.price,
+                )
             )
-        )
-    else:
-        msg_str = msg.TRADE_EXECUTION_FAILED.format(symbol=symbol, error=result.error)
-        logger.error(msg_str)
-
-    if notification_callback:
-        notification_callback(msg_str)
-
-
-async def _notify_rich(
-    symbol: str,
-    action: SignalAction,
-    volume: float,
-    price: float,
-    sl: float | None = None,
-    tp: float | None = None,
-    comment: str = "",
-):
-    """Send rich trade notification via logger."""
-    try:
-        notifier = get_trade_notifier()
-        await notifier.notify_trade_opened(
-            symbol=symbol,
-            trade_type=action,
-            volume=volume,
-            entry_price=price,
-            stop_loss=sl,
-            take_profit=tp,
-            strategy=comment,
-        )
-    except Exception as e:
-        logger.error(msg.NOTIFY_ERROR.format(error=e))
+        else:
+            logger.error(
+                msg.TRADE_EXECUTION_FAILED.format(
+                    symbol=symbol, error=order_result.error
+                )
+            )

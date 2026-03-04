@@ -1,7 +1,4 @@
-"""
-Centralized decorators for QuantLux.
-Merged from app/core/decorators/ sub-package.
-"""
+"""Centralized decorators for QuantLux."""
 
 import asyncio
 import functools
@@ -20,7 +17,7 @@ def retry_on_error(
     backoff_factor: float = 2.0,
     exceptions: tuple[type[Exception], ...] = (Exception,),
 ):
-    """Retry decorator with exponential backoff for async and sync functions."""
+    """Retry with exponential backoff for async and sync functions."""
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -38,7 +35,6 @@ def retry_on_error(
                             f"{func.__name__} failed after {max_retries} retries: {e}"
                         )
                         raise
-
                     logger.warning(
                         f"{func.__name__} attempt {attempt + 1}/{max_retries + 1} failed: {e}. "
                         f"Retrying in {delay}s..."
@@ -64,7 +60,6 @@ def retry_on_error(
                             f"{func.__name__} failed after {max_retries} retries: {e}"
                         )
                         raise
-
                     logger.warning(
                         f"{func.__name__} attempt {attempt + 1}/{max_retries + 1} failed: {e}. "
                         f"Retrying in {delay}s..."
@@ -77,14 +72,13 @@ def retry_on_error(
 
         if inspect.iscoroutinefunction(func):
             return async_wrapper
-        else:
-            return sync_wrapper
+        return sync_wrapper
 
     return decorator
 
 
 def fallback_on_failure(default_return: Any = None):
-    """Decorator to catch exceptions and return a safe default fallback value."""
+    """Catch exceptions and return a safe default value."""
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -109,8 +103,7 @@ def fallback_on_failure(default_return: Any = None):
 
         if inspect.iscoroutinefunction(func):
             return async_wrapper
-        else:
-            return sync_wrapper
+        return sync_wrapper
 
     return decorator
 
@@ -119,17 +112,14 @@ def require_feature(
     feature_flag: str,
     fallback_return: Any = None,
 ):
-    """
-    Decorator to guard functions behind a settings feature flag.
-    """
+    """Guard a function behind a settings feature flag."""
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs) -> Any:
-            from app.core.settings import settings  # local import to avoid circular
+            from app.core.settings import settings
 
-            is_enabled = getattr(settings, feature_flag, False)
-            if not is_enabled:
+            if not getattr(settings, feature_flag, False):
                 logger.debug(f"Skipping {func.__name__} - {feature_flag} is disabled.")
                 return fallback_return
             return await func(*args, **kwargs)
@@ -138,22 +128,20 @@ def require_feature(
         def sync_wrapper(*args, **kwargs) -> Any:
             from app.core.settings import settings
 
-            is_enabled = getattr(settings, feature_flag, False)
-            if not is_enabled:
+            if not getattr(settings, feature_flag, False):
                 logger.debug(f"Skipping {func.__name__} - {feature_flag} is disabled.")
                 return fallback_return
             return func(*args, **kwargs)
 
         if inspect.iscoroutinefunction(func):
             return async_wrapper
-        else:
-            return sync_wrapper
+        return sync_wrapper
 
     return decorator
 
 
 def log_latency(level: str = "DEBUG"):
-    """Decorator to log the execution time of a function."""
+    """Log execution time of a function."""
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -180,8 +168,7 @@ def log_latency(level: str = "DEBUG"):
 
         if inspect.iscoroutinefunction(func):
             return async_wrapper
-        else:
-            return sync_wrapper
+        return sync_wrapper
 
     return decorator
 

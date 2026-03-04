@@ -1,6 +1,4 @@
-"""Split Order Manager for Partial Take Profit Execution."""
-
-from collections.abc import Callable
+"""Split order execution for partial take profits."""
 
 from app.core import messages as msg
 from app.core import settings
@@ -11,15 +9,10 @@ from app.utils.logger import logger
 
 
 class SplitOrderManager:
-    """Manages the execution of split orders for partial take profits."""
+    """Splits a trade into multiple orders across TP levels."""
 
-    def __init__(
-        self,
-        metaapi,
-        notification_callback: Callable[[str], None] | None = None,
-    ):
+    def __init__(self, metaapi):
         self.metaapi = metaapi
-        self.notification_callback = notification_callback
 
     async def execute(
         self,
@@ -30,12 +23,7 @@ class SplitOrderManager:
         tp_levels: list[float],
         base_comment: str,
     ) -> None:
-        """
-        Execute trade with split orders based on TP levels.
-
-        If split execution is disabled in settings, executes a single order
-        targeting the first TP level.
-        """
+        """Execute split orders, or a single order if splitting is disabled."""
         if not settings.ALLOW_SPLIT_EXECUTION:
             logger.info(msg.SPLITTER_DISABLED.format(symbol=symbol))
             take_profit = tp_levels[0] if tp_levels else None
@@ -46,15 +34,11 @@ class SplitOrderManager:
                 stop_loss=stop_loss,
                 take_profit=take_profit,
                 comment=base_comment,
-                notification_callback=self.notification_callback,
             )
             return
 
-        # Execution Logic
         num_orders = len(tp_levels)
         base_vol = round(total_volume / num_orders, 2)
-
-        # Adjust last order to match total volume exactly (handle rounding)
         volumes = [base_vol] * num_orders
         remainder = round(total_volume - sum(volumes), 2)
         if remainder != 0:
@@ -70,7 +54,6 @@ class SplitOrderManager:
                 continue
 
             comment = f"{base_comment} (TP{i + 1})"
-
             task_obj = OrderTask(
                 action=action,
                 symbol=symbol,
@@ -84,24 +67,18 @@ class SplitOrderManager:
 
             if result and (result.get("success") or "positionId" in result):
                 executed_count += 1
-                if self.notification_callback:
-                    self.notification_callback(
-                        msg.SPLIT_TRADE_SUCCESS.format(
-                            symbol=symbol,
-                            index=i + 1,
-                            total=num_orders,
-                            volume=vol,
-                            tp=tp,
-                        )
+                logger.info(
+                    msg.SPLIT_TRADE_SUCCESS.format(
+                        symbol=symbol, index=i + 1, total=num_orders, volume=vol, tp=tp
                     )
+                )
             else:
                 error = result.get("error") if result else "Unknown error"
-                if self.notification_callback:
-                    self.notification_callback(
-                        msg.SPLIT_TRADE_FAILED.format(
-                            symbol=symbol, index=i + 1, total=num_orders, error=error
-                        )
+                logger.error(
+                    msg.SPLIT_TRADE_FAILED.format(
+                        symbol=symbol, index=i + 1, total=num_orders, error=error
                     )
+                )
 
         if executed_count == num_orders:
             logger.info(msg.ALL_SPLIT_SUCCESS.format(symbol=symbol))
