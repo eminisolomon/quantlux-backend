@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from app.metaapi.data import get_candles_as_dataframe_sync
+
 from app.strategies.adapter.models import UnifiedSignal
 from app.strategies.mean_rev import (
     EnhancedMeanReversionStrategy,
@@ -88,11 +88,11 @@ class StrategyAdapter:
             self.active_strategies["mean_reversion"] = True
             self.active_strategies["rsi"] = True
 
-    def analyze(self) -> UnifiedSignal | None:
+    async def analyze(self) -> UnifiedSignal | None:
         """Analyze market with all active strategies."""
         try:
-            # Fetch data from MetaApi
-            data = self._fetch_market_data()
+            # Fetch data using MarketDataService
+            data = await self._fetch_market_data()
 
             if not data:
                 logger.warning(f"No market data available for {self.symbol}")
@@ -130,12 +130,12 @@ class StrategyAdapter:
             logger.error(f"Error in strategy analysis: {e}")
             return None
 
-    def analyze_multi_strategy(self) -> dict[str, UnifiedSignal | None]:
+    async def analyze_multi_strategy(self) -> dict[str, UnifiedSignal | None]:
         """Analyze with all strategies and return all signals for confluence check."""
         signals = {}
 
         try:
-            data = self._fetch_market_data()
+            data = await self._fetch_market_data()
 
             if not data:
                 return signals
@@ -159,9 +159,9 @@ class StrategyAdapter:
 
         return signals
 
-    def check_confluence(self) -> UnifiedSignal | None:
+    async def check_confluence(self) -> UnifiedSignal | None:
         """Check for multi-strategy confluence (highest probability setups)."""
-        signals = self.analyze_multi_strategy()
+        signals = await self.analyze_multi_strategy()
 
         # Filter out None signals
         active_signals = {k: v for k, v in signals.items() if v is not None}
@@ -206,21 +206,29 @@ class StrategyAdapter:
 
         return None
 
-    def _fetch_market_data(self) -> dict[str, Any] | None:
+    async def _fetch_market_data(self) -> dict[str, Any] | None:
         """Fetch OHLC data from MetaApi."""
         try:
-            # Primary timeframe
-            df_primary = get_candles_as_dataframe_sync(
+            from app.core.di import container
+            from app.services.market_data_service import MarketDataService
+
+            data_service = container.resolve(MarketDataService)
+            df_primary = await data_service.get_candles_as_dataframe(
                 self.symbol, self.primary_timeframe, limit=200
             )
 
             if df_primary is None or df_primary.empty:
                 return None
 
-            # Additional timeframes for MTF analysis
-            df_h1 = get_candles_as_dataframe_sync(self.symbol, "1h", limit=200)
-            df_h4 = get_candles_as_dataframe_sync(self.symbol, "4h", limit=200)
-            df_d1 = get_candles_as_dataframe_sync(self.symbol, "1d", limit=200)
+            df_h1 = await data_service.get_candles_as_dataframe(
+                self.symbol, "1h", limit=200
+            )
+            df_h4 = await data_service.get_candles_as_dataframe(
+                self.symbol, "4h", limit=200
+            )
+            df_d1 = await data_service.get_candles_as_dataframe(
+                self.symbol, "1d", limit=200
+            )
 
             return {
                 "primary": df_primary,

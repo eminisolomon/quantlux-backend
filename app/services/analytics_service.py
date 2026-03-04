@@ -13,14 +13,14 @@ from app.schemas import (
     PerformanceStats,
     Trade,
 )
-from app.analytics.simulation import MonteCarloSimulator, SimulationResults
-from app.analytics.visualizer import PerformanceVisualizer
+from app.services.simulation import MonteCarloSimulator, SimulationResults
+from app.services.visualizer import PerformanceVisualizer
 from app.core import messages as msg
 from app.core.settings import settings
 from app.utils.logger import logger
 
 
-class PerformanceTracker:
+class AnalyticsService:
     def __init__(
         self, storage_path: str = "data/trades.json", initial_balance: float = 10000.0
     ):
@@ -286,40 +286,6 @@ class PerformanceTracker:
             avg_loss=avg_trades.avg_loss,
             avg_trade=avg_trades.avg_trade,
         )
-
-    def format_report_for_telegram(self) -> str:
-        report = self.generate_performance_report()
-
-        profit_emoji = "📈" if report.net_profit >= 0 else "📉"
-        sharpe_emoji = "🔥" if report.sharpe_ratio > 1.5 else "⚡"
-
-        msg = f"""
-{profit_emoji} *Performance Report*
-
-💰 *Profitability*
-Net Profit: ${report.net_profit:.2f}
-ROI: {report.roi:.2f}%
-Current Equity: ${report.current_equity:.2f}
-
-📊 *Trade Statistics*
-Total Trades: {report.total_trades}
-Win Rate: {report.win_rate:.1f}%
-Profit Factor: {report.profit_factor:.2f}
-
-💵 *Average Trade*
-Avg Win: ${report.avg_win:.2f}
-Avg Loss: ${report.avg_loss:.2f}
-Avg Trade: ${report.avg_trade:.2f}
-
-{sharpe_emoji} *Risk Metrics*
-Sharpe Ratio: {report.sharpe_ratio:.2f}
-Sortino Ratio: {report.sortino_ratio:.2f}
-Recovery Factor: {report.recovery_factor:.2f}
-Max Drawdown: {report.max_drawdown_pct:.2f}%
-Current DD: {report.current_drawdown:.2f}%
-        """.strip()
-
-        return msg
 
     def run_monte_carlo(self, iterations: int = 1000) -> SimulationResults:
         """Run stress-testing simulation."""

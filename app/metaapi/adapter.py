@@ -3,7 +3,7 @@ from typing import Any
 from app.execution.broker import AbstractBroker
 from app.execution.metaapi import MetaApiBroker
 from app.metaapi.connection import MetaApiConnection
-from app.metaapi.data import MetaApiData
+
 from app.metaapi.info import MetaApiInfo
 from app.metaapi.mappers import (
     map_account_info,
@@ -65,10 +65,18 @@ class MetaApiAdapter(AbstractBroker):
         orders = await MetaApiInfo.get_orders(symbol)
         return [map_trade_order(o) for o in orders]
 
-    async def get_symbol_info(self, symbol: str) -> SymbolInfo | None:
-        """Get symbol specification."""
-        info = await MetaApiData.get_symbol_info(symbol)
-        return map_symbol_info(symbol, info) if info else None
+        # Symbol info comes from the connection directly now, bypassing the removed MetaApiData static
+        try:
+            from app.metaapi.connection import MetaApiConnection
+
+            conn = MetaApiConnection.get_connection()
+            info = await conn.get_symbol_specification(symbol)
+            return map_symbol_info(symbol, info) if info else None
+        except Exception as e:
+            from app.core import logger
+
+            logger.error(f"Adapter get_symbol_info failed: {e}")
+            return None
 
     # --- Execution Methods ---
 
@@ -121,24 +129,38 @@ class MetaApiAdapter(AbstractBroker):
 
     async def symbol_select(self, symbol: str, enable: bool = True) -> bool:
         """Subscribe/unsubscribe market data."""
-        if enable:
-            return await MetaApiData.subscribe_to_market_data(symbol)
-        return True
+        try:
+            from app.metaapi.connection import MetaApiConnection
 
-    async def get_candles(
-        self, symbol: str, timeframe: str = "H1", start_time=None, limit: int = 1000
-    ):
-        """Get historical candles."""
-        return await MetaApiData.get_candles(symbol, timeframe, start_time, limit)
+            conn = MetaApiConnection.get_connection()
+            if enable:
+                await conn.subscribe_to_market_data(symbol)
+            return True
+        except Exception:
+            return False
 
-    async def get_candles_as_dataframe(
-        self, symbol: str, timeframe: str = "H1", start_time=None, limit: int = 1000
+    async def read_candles(
+        self, symbol: str, timeframe: str = "1h", start_time=None, limit: int = 1000
     ):
-        """Get historical candles as DataFrame."""
-        return await MetaApiData.get_candles_as_dataframe(
-            symbol, timeframe, start_time, limit
-        )
+        """Get historical candles straight from connection (used by MarketDataService)."""
+        from app.metaapi.connection import MetaApiConnection
+
+        conn = MetaApiConnection.get_connection()
+        return await conn.get_candles(symbol, timeframe, start_time, limit)
+
+    async def read_ticks(self, symbol: str, start_time=None, limit: int = 1000):
+        """Get historical ticks straight from connection."""
+        from app.metaapi.connection import MetaApiConnection
+
+        conn = MetaApiConnection.get_connection()
+        return await conn.get_ticks(symbol, start_time, limit)
 
     async def get_symbol_price(self, symbol: str) -> dict[str, Any] | None:
         """Get current market price."""
-        return await MetaApiData.get_symbol_price(symbol)
+        try:
+            from app.metaapi.connection import MetaApiConnection
+
+            conn = MetaApiConnection.get_connection()
+            return await conn.get_symbol_price(symbol)
+        except Exception:
+            return None

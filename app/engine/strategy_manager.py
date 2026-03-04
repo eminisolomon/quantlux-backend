@@ -60,24 +60,24 @@ class StrategyManager:
 
         return signals
 
-    def analyze_high_accuracy(self, symbol: str) -> UnifiedSignal | None:
+    async def analyze_high_accuracy(self, symbol: str) -> UnifiedSignal | None:
         """Analyze with high-accuracy strategies."""
         if symbol not in self.strategy_adapters:
             return None
 
         adapter = self.strategy_adapters[symbol]
-        confluence_signal = adapter.check_confluence()
+        confluence_signal = await adapter.check_confluence()
 
         if confluence_signal:
             return confluence_signal
-        return adapter.analyze()
+        return await adapter.analyze()
 
     async def get_all_signals(self, symbol: str) -> dict[str, Any]:
         """Get all signals from all strategies for a symbol."""
         all_signals = {"legacy": [], "high_accuracy": None, "confluence": False}
 
         await self._get_legacy_signals(symbol, all_signals)
-        self._get_high_accuracy_signals(symbol, all_signals)
+        await self._get_high_accuracy_signals(symbol, all_signals)
 
         return all_signals
 
@@ -123,7 +123,7 @@ class StrategyManager:
                 }
             )
 
-    def _get_high_accuracy_signals(
+    async def _get_high_accuracy_signals(
         self, symbol: str, all_signals: dict[str, Any]
     ) -> None:
         """Process signals for high-accuracy strategies."""
@@ -131,13 +131,13 @@ class StrategyManager:
             return
 
         adapter = self.strategy_adapters[symbol]
-        confluence_signal = adapter.check_confluence()
+        confluence_signal = await adapter.check_confluence()
 
         if confluence_signal:
             all_signals["high_accuracy"] = confluence_signal
             all_signals["confluence"] = True
         else:
-            all_signals["high_accuracy"] = adapter.analyze()
+            all_signals["high_accuracy"] = await adapter.analyze()
 
     def set_strategy_active(self, symbol: str, strategy_name: str, active: bool):
         """Enable/disable a specific strategy."""

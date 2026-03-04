@@ -38,7 +38,7 @@ async def main():
         ) = await init_engine_services()
 
         order_queue.initialize(broker)
-        gemini = init_ai_services()
+        ai_service = init_ai_services(broker)
 
         (
             drawdown_manager,
@@ -50,7 +50,7 @@ async def main():
             correlation_manager,
             news_manager,
             broker,
-            gemini=gemini,
+            ai_service=ai_service,
         )
 
         await synchronize_state(broker, drawdown_manager, tracker)

@@ -3,7 +3,7 @@
 from app.core.enums import SignalAction
 from app.indicators.rsi.calculator import ModernRSI
 from app.indicators.rsi.config import RSIConfig
-from app.metaapi.data import get_candles_as_dataframe_sync
+
 from app.utils.logger import logger
 
 
@@ -18,12 +18,16 @@ class MultiTimeframeRSI:
     ) -> dict[str, dict]:
         """Analyze RSI across multiple timeframes."""
 
+        from app.core.di import container
+        from app.services.market_data_service import MarketDataService
+
+        data_service = container.resolve(MarketDataService)
         results = {}
 
         for tf in timeframes:
             try:
                 # Get candles for this timeframe
-                df = get_candles_as_dataframe_sync(symbol, tf, limit=100)
+                df = await data_service.get_candles_as_dataframe(symbol, tf, limit=100)
 
                 if df is None or df.empty:
                     logger.warning(f"No data for {symbol} {tf}")

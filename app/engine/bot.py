@@ -4,14 +4,14 @@ from app.core import logger, settings
 from app.core import messages as msg
 from app.core.symbols import SymbolManager
 from app.engine.executor import SignalExecutor
-from app.engine.feed import DataFeed
+from app.services.market_data_service import MarketDataService
 from app.engine.strategy_manager import StrategyManager
 from app.engine.watchdog import MarketWatchdog
 from app.metaapi.adapter import MetaApiAdapter
 from app.schemas.market import TickData
 from app.risk import RiskManager
 from app.risk.trade_manager import ActiveTradeManager
-from news.manager import NewsManager
+from app.services.news_service import NewsService
 
 
 class TradingBot:
@@ -30,7 +30,7 @@ class TradingBot:
         gemini=None,
     ):
         self.is_running = False
-        self.data_feed: DataFeed | None = None
+        self.data_feed: MarketDataService | None = None
         self.risk_manager = risk_manager
         self.symbol_manager = symbol_manager
         self.news_manager = news_manager
@@ -54,9 +54,9 @@ class TradingBot:
         if not symbols:
             logger.warning(msg.BOT_IDLE)
 
-        self.data_feed = DataFeed(symbols, self.trade_executor)
+        self.data_feed = MarketDataService(symbols, self.trade_executor)
         self.data_feed.register_callback(self.on_tick)
-        await self.data_feed.start()
+        await self.data_feed.start_feed()
 
         self.is_running = True
         logger.success(msg.BOT_ACTIVE.format(count=len(symbols)))
@@ -78,7 +78,7 @@ class TradingBot:
         self.is_running = False
 
         if self.data_feed:
-            await self.data_feed.stop()
+            await self.data_feed.stop_feed()
 
         await self.active_trade_manager.stop()
         await self.news_manager.stop()
@@ -116,7 +116,7 @@ class TradingBot:
             if not await self._should_process_tick(symbol, tick):
                 return
 
-            unified_signal = self.strategies.analyze_high_accuracy(symbol)
+            unified_signal = await self.strategies.analyze_high_accuracy(symbol)
             if unified_signal:
                 trade_signal = self._create_trade_signal(symbol, unified_signal)
                 await self.executor.process_signal(trade_signal, strategy=None)
