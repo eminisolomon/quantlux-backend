@@ -110,7 +110,7 @@ async def _notify_rich(
     tp: float | None = None,
     comment: str = "",
 ):
-    """Send rich Telegram notification."""
+    """Send rich trade notification via logger."""
     try:
         notifier = get_trade_notifier()
         await notifier.notify_trade_opened(

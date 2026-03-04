@@ -72,7 +72,7 @@ class TradingBot:
 
     def register_notification_callback(self, callback: Callable[[str], None]) -> None:
         """
-        Register a global callback mechanism for system notifications (e.g., Telegram).
+        Register a global callback mechanism for system notifications.
 
         Args:
             callback: A function that accepts a message string.

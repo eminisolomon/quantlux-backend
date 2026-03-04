@@ -15,11 +15,6 @@ from app.risk.correlation import CorrelationManager
 from app.risk.drawdown import DrawdownManager
 from app.risk.manager import RiskManager
 from app.services.account import AccountService
-from app.telegram.bot import TelegramBot
-from app.telegram.controllers.ai_chat import AIChatController
-from app.telegram.controllers.analytics import AnalyticsController
-from app.telegram.controllers.callbacks import CallbacksController
-from app.telegram.controllers.info import InfoController
 from app.utils.logger import logger
 from news.manager import NewsManager
 
@@ -89,46 +84,6 @@ async def init_trading_logic(
     )
 
     return drawdown_manager, tracker, risk_manager, trading_bot
-
-
-async def init_telegram_interface(
-    trading_bot: TradingBot,
-    tracker: PerformanceTracker,
-    drawdown: DrawdownManager,
-    broker: AbstractBroker,
-    gemini: GeminiClient = None,
-) -> TelegramBot:
-    """Initialize Telegram bot and register controllers."""
-
-    account_service = container.resolve(AccountService)
-
-    analytics_controller = AnalyticsController(
-        performance_tracker=tracker,
-        drawdown=drawdown,
-        account_service=account_service,
-    )
-
-    callbacks_controller = CallbacksController(
-        tracker=tracker, account_service=account_service
-    )
-
-    info_controller = InfoController(account_service=account_service)
-
-    # AI Chat Controller (optional)
-    ai_chat_controller = None
-    if gemini and gemini.is_available and settings.ENABLE_AI_FEATURES:
-        ai_chat_controller = AIChatController(
-            gemini=gemini, account_service=account_service, tracker=tracker
-        )
-
-    telegram_bot = TelegramBot(
-        analytics_controller=analytics_controller,
-        callbacks_controller=callbacks_controller,
-        info_controller=info_controller,
-        ai_chat_controller=ai_chat_controller,
-    )
-    telegram_bot.trading_bot = trading_bot
-    return telegram_bot
 
 
 async def synchronize_state(

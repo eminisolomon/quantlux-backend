@@ -12,12 +12,10 @@ aiohttp>=3.7.4
 httpx>=0.28.1
 websockets>=13.0
 lxml
-fastapi>=0.111.0
-uvicorn>=0.30.0
 
 # Utils & UI
 apscheduler>=3.11.2
-python-telegram-bot>=22.6
+
 loguru>=0.7.3
 
 # Dev Tools

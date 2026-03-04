@@ -2,8 +2,7 @@
 QuantLux Trading Bot - Main Entry Point
 
 This module orchestrates the initialization, execution, and graceful shutdown
-of the QuantLux trading bot, including engine services, AI risk guards,
-and Telegram interface.
+of the QuantLux trading bot engine.
 """
 
 import asyncio
@@ -16,15 +15,11 @@ from app.engine.bot import TradingBot
 from app.engine.lifecycle import (
     init_ai_services,
     init_engine_services,
-    init_telegram_interface,
     init_trading_logic,
     synchronize_state,
 )
 from app.engine.queue import order_queue
 from app.engine.health import HealthMonitor
-from app.engine.api import app as fastapi_app
-from app.telegram.bot import TelegramBot
-import uvicorn
 
 
 async def setup_signals(stop_event: asyncio.Event):
@@ -42,26 +37,6 @@ async def setup_signals(stop_event: asyncio.Event):
 
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, signal_handler)
-
-
-def setup_bot_callbacks(
-    trading_bot: TradingBot, telegram_bot: TelegramBot, loop: asyncio.AbstractEventLoop
-):
-    """
-    Establish communication bridges between the trading engine and the Telegram interface.
-
-    Args:
-        trading_bot: The core trading engine instance.
-        telegram_bot: The Telegram interface instance.
-        loop: The primary asyncio event loop.
-    """
-
-    def notify_telegram(message: str):
-        if telegram_bot.application:
-            asyncio.run_coroutine_threadsafe(telegram_bot.send_message(message), loop)
-
-    trading_bot.register_notification_callback(notify_telegram)
-    return notify_telegram
 
 
 async def main():
@@ -99,16 +74,6 @@ async def main():
             gemini=gemini,
         )
 
-        # --- INTERFACE SETUP ---
-        # Initialize the Telegram bot as the primary user interface.
-        telegram_bot = await init_telegram_interface(
-            trading_bot,
-            tracker,
-            drawdown_manager,
-            broker,
-            gemini=gemini,
-        )
-
         # --- STATE SYNCHRONIZATION ---
         # Ensure the local bot state matches the live broker account state.
         await synchronize_state(broker, drawdown_manager, tracker)
@@ -118,27 +83,14 @@ async def main():
         stop_event = asyncio.Event()
 
         await setup_signals(stop_event)
-        notify_telegram = setup_bot_callbacks(trading_bot, telegram_bot, loop)
 
-        # Initialize health monitor
-        health_monitor = HealthMonitor(broker, telegram_notify_cb=notify_telegram)
-
-        # Configure API Server
-        fastapi_app.state.tracker = tracker
-        fastapi_app.state.trading_bot = trading_bot
-        fastapi_app.state.health_monitor = health_monitor
-
-        api_config = uvicorn.Config(
-            fastapi_app, host="0.0.0.0", port=8000, log_level="info"
-        )
-        api_server = uvicorn.Server(api_config)
+        # Initialize health monitor (logs warnings only, no Telegram)
+        health_monitor = HealthMonitor(broker)
 
         # Launch background tasks and service loops.
         await order_queue.start()
         await trading_bot.start()
-        await telegram_bot.start()
         await health_monitor.start()
-        api_task = asyncio.create_task(api_server.serve())
 
         logger.success(msg.RUNNING_MESSAGE)
 
@@ -149,16 +101,8 @@ async def main():
         # --- GRACEFUL SHUTDOWN ---
         logger.info(msg.SHUTDOWN_START)
 
-        # Stop API server gracefully
-        api_server.should_exit = True
-        try:
-            await api_task
-        except asyncio.CancelledError:
-            pass
-
         await health_monitor.stop()
         await order_queue.stop()
-        await telegram_bot.stop()
         await trading_bot.stop()
         await broker.shutdown()
         logger.info(msg.SHUTDOWN_COMPLETE_GOODBYE)
