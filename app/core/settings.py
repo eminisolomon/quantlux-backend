@@ -43,10 +43,6 @@ class Settings(BaseSettings):
     METAAPI_TOKEN: str | None = None
     METAAPI_ACCOUNT_ID: str | None = None
     METAAPI_REGION: str = "new-york"
-    TELEGRAM_BOT_TOKEN: str | None = None
-    TELEGRAM_CHAT_ID: str | None = None
-    GEMINI_API_KEY: str | None = None
-    GEMINI_MODEL: str = "gemini-1.5-flash"
 
     # Trading Logic & Risk
     MAX_DAILY_DRAWDOWN_PCT: float = 5.0
@@ -63,8 +59,6 @@ class Settings(BaseSettings):
 
     ENABLE_AUTO_TRADING: bool = False
     ENABLE_NEWS_FILTER: bool = True
-    ENABLE_AI_FEATURES: bool = True
-    ENABLE_AI_RISK_GUARD: bool = True
     ALLOW_SPLIT_EXECUTION: bool = False
     EMERGENCY_CLOSE_ON_SHUTDOWN: bool = True
 

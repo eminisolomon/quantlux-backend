@@ -6,6 +6,18 @@ from app.core.protocols import BrokerProtocol
 from app.schemas.metaapi import TradePosition, SymbolInfo
 
 
+def _pip_size(symbol_info: SymbolInfo) -> float:
+    """Return pip size in price units for the given symbol."""
+    return symbol_info.point * (10 if "JPY" in symbol_info.symbol else 1)
+
+
+def _profit_pips(pos: TradePosition, is_buy: bool, pip_size: float) -> float:
+    """Calculate current floating profit in pips for an open position."""
+    if is_buy:
+        return (pos.currentPrice - pos.openPrice) / pip_size
+    return (pos.openPrice - pos.currentPrice) / pip_size
+
+
 class ActiveTradeManager:
     """Monitors open positions for trailing stops, breakeven, and partial take profits."""
 
@@ -50,20 +62,27 @@ class ActiveTradeManager:
             await asyncio.sleep(60)  # Check every minute
 
     async def manage_open_trades(self) -> None:
-        """Fetch and process all open positions."""
-        positions = await self.broker.get_positions()
-
+        """Fetch and process all bot-managed open positions."""
+        positions = await self._get_managed_positions()
         for pos in positions:
-            magic = getattr(pos, "magic", None) or (
-                isinstance(pos, dict) and pos.get("magic")
+            await self._process_position(pos)
+
+    async def _get_managed_positions(self) -> list:
+        """Return only positions belonging to this bot (by magic number)."""
+        all_positions = await self.broker.get_positions()
+        return [
+            pos
+            for pos in all_positions
+            if (
+                getattr(pos, "magic", None) == settings.MAGIC_NUMBER
+                or (isinstance(pos, dict) and pos.get("magic") == settings.MAGIC_NUMBER)
             )
-            if magic != settings.MAGIC_NUMBER:
-                continue
+        ]
 
-            symbol_info = await self.broker.get_symbol_info(pos.symbol)
-            if not symbol_info:
-                continue
-
+    async def _process_position(self, pos: TradePosition) -> None:
+        """Fetch symbol info and apply trade management for a single position."""
+        symbol_info = await self.broker.get_symbol_info(pos.symbol)
+        if symbol_info:
             await self._apply_trade_management(pos, symbol_info)
 
     async def _apply_trade_management(
@@ -71,22 +90,14 @@ class ActiveTradeManager:
     ) -> None:
         try:
             is_buy = pos.type == "POSITION_TYPE_BUY"
-            pip_size = symbol_info.point * (10 if "JPY" in symbol_info.symbol else 1)
-
-            current_profit_pips = (
-                (pos.currentPrice - pos.openPrice) / pip_size
-                if is_buy
-                else (pos.openPrice - pos.currentPrice) / pip_size
-            )
+            pip_size = _pip_size(symbol_info)
+            profit_pips = _profit_pips(pos, is_buy, pip_size)
 
             breakeven_triggered = await self._handle_breakeven(
-                pos, is_buy, pip_size, current_profit_pips
+                pos, is_buy, pip_size, profit_pips
             )
-
             if not breakeven_triggered:
-                await self._handle_trailing_stop(
-                    pos, is_buy, pip_size, current_profit_pips
-                )
+                await self._handle_trailing_stop(pos, is_buy, pip_size, profit_pips)
 
         except Exception as e:
             logger.error(f"Trade management error for {pos.symbol}: {e}")

@@ -48,15 +48,11 @@ class EconomicCalendar:
     def _parse_html(self, html: str, date: datetime) -> list[NewsEvent]:
         soup = BeautifulSoup(html, "html.parser")
         table = soup.find("table", class_="calendar__table")
-
-        events = []
         if not table:
-            return events
-
-        year = date.year
+            return []
 
         rows = table.find_all("tr", class_=["calendar__row", "calendar_row"])
-
+        events = []
         current_time_str = "00:00"
 
         for row in rows:
@@ -67,53 +63,57 @@ class EconomicCalendar:
                 currency_cell = row.find("td", class_="calendar__currency")
                 if not currency_cell:
                     continue
-                currency = currency_cell.text.strip()
-
-                impact_cell = row.find("td", class_="calendar__impact")
-                impact_span = impact_cell.find("span") if impact_cell else None
-                impact_classes = (
-                    str(impact_span.get("class", [])) if impact_span else ""
-                )
-
-                if "impact-red" in impact_classes:
-                    impact = Impact.HIGH
-                elif "impact-orange" in impact_classes:
-                    impact = Impact.MEDIUM
-                elif "impact-yellow" in impact_classes:
-                    impact = Impact.LOW
-                else:
-                    impact = Impact.NONE
-
-                title_cell = row.find("td", class_="calendar__event")
-                title = title_cell.text.strip() if title_cell else "Unknown"
 
                 time_cell = row.find("td", class_="calendar__time")
                 if time_cell and time_cell.text.strip():
                     current_time_str = time_cell.text.strip()
 
-                event_time = self._parse_time(current_time_str, date)
-
-                actual = row.find("td", class_="calendar__actual").text.strip()
-                forecast = row.find("td", class_="calendar__forecast").text.strip()
-                previous = row.find("td", class_="calendar__previous").text.strip()
-
-                event = NewsEvent(
-                    id=row.get("data-event-id", ""),
-                    title=title,
-                    country=currency[:2] if len(currency) >= 2 else "Global",
-                    currency=currency,
-                    impact=impact,
-                    time=event_time,
-                    forecast=forecast,
-                    previous=previous,
-                    actual=actual,
-                )
-                events.append(event)
-
+                event = self._build_event(row, date, current_time_str)
+                if event:
+                    events.append(event)
             except Exception:
                 continue
 
         return events
+
+    def _build_event(self, row, date: datetime, time_str: str) -> NewsEvent | None:
+        """Build a NewsEvent from a calendar table row."""
+        try:
+            currency = row.find("td", class_="calendar__currency").text.strip()
+            title_cell = row.find("td", class_="calendar__event")
+            title = title_cell.text.strip() if title_cell else "Unknown"
+
+            return NewsEvent(
+                id=row.get("data-event-id", ""),
+                title=title,
+                country=currency[:2] if len(currency) >= 2 else "Global",
+                currency=currency,
+                impact=self._extract_impact(row),
+                time=self._extract_event_time(time_str, date),
+                forecast=row.find("td", class_="calendar__forecast").text.strip(),
+                previous=row.find("td", class_="calendar__previous").text.strip(),
+                actual=row.find("td", class_="calendar__actual").text.strip(),
+            )
+        except Exception:
+            return None
+
+    def _extract_impact(self, row) -> Impact:
+        """Determine the impact level from a row's impact span classes."""
+        impact_cell = row.find("td", class_="calendar__impact")
+        impact_span = impact_cell.find("span") if impact_cell else None
+        classes = str(impact_span.get("class", [])) if impact_span else ""
+
+        if "impact-red" in classes:
+            return Impact.HIGH
+        if "impact-orange" in classes:
+            return Impact.MEDIUM
+        if "impact-yellow" in classes:
+            return Impact.LOW
+        return Impact.NONE
+
+    def _extract_event_time(self, time_str: str, date: datetime) -> datetime:
+        """Parse a calendar time string into a full datetime."""
+        return self._parse_time(time_str, date)
 
     def _parse_time(self, time_str: str, date: datetime) -> datetime:
         """Parses a time string into a datetime object."""

@@ -9,7 +9,6 @@ from app.engine.splitter import SplitOrderManager
 from app.schemas.metaapi import SymbolInfo
 from app.schemas.signal import TradeSignal
 from app.risk import RiskManager
-from app.risk.ai_guard import evaluate_trade as ai_evaluate_trade
 from app.risk.sizing.strategies import calculate_risk_lot
 from app.strategies.base import BaseStrategy
 
@@ -17,16 +16,15 @@ from app.strategies.base import BaseStrategy
 class SignalExecutor:
     """Processes trading signals through risk checks and executes orders."""
 
-    def __init__(self, risk_manager: RiskManager, broker: BrokerProtocol, gemini=None):
+    def __init__(self, risk_manager: RiskManager, broker: BrokerProtocol):
         self.risk_manager = risk_manager
         self.broker = broker
-        self.gemini = gemini
         self.split_manager = SplitOrderManager(self.broker)
 
     async def process_signal(
         self, signal: TradeSignal, strategy: BaseStrategy | None = None
     ) -> None:
-        """Validate, size, risk-check, and execute a trade signal orchestrator."""
+        """Validate, size, risk-check, and execute a trade signal."""
         try:
             account_info, symbol_info = await self._fetch_market_data(signal.symbol)
             if not account_info or not symbol_info:
@@ -34,9 +32,6 @@ class SignalExecutor:
 
             volume = self._calculate_volume(signal, account_info, symbol_info)
             if volume <= 0:
-                return
-
-            if not await self._run_ai_guard(signal, volume, account_info):
                 return
 
             comment = signal.comment or (
@@ -67,7 +62,7 @@ class SignalExecutor:
     def _calculate_volume(
         self, signal: TradeSignal, account_info, symbol_info
     ) -> float:
-        """Calculate local risk volume and check limits."""
+        """Calculate risk-adjusted volume and check limits."""
         volume = calculate_risk_lot(
             account=account_info,
             symbol_info=symbol_info,
@@ -87,60 +82,10 @@ class SignalExecutor:
 
         return volume
 
-    async def _run_ai_guard(
-        self, signal: TradeSignal, volume: float, account_info
-    ) -> bool:
-        """Run remote AI trade guard if enabled."""
-        if not (
-            settings.ENABLE_AI_RISK_GUARD and self.gemini and self.gemini.is_available
-        ):
-            return True
-
-        symbol = signal.symbol
-        action = signal.action
-        try:
-            drawdown_pct = (
-                (1 - account_info.equity / account_info.balance) * 100
-                if account_info.balance > 0
-                else 0.0
-            )
-            positions = await self.broker.get_positions()
-            guard_result = await ai_evaluate_trade(
-                gemini=self.gemini,
-                symbol=symbol,
-                action=action.value,
-                volume=volume,
-                balance=account_info.balance,
-                equity=account_info.equity,
-                drawdown_pct=drawdown_pct,
-                daily_dd_pct=drawdown_pct,
-                open_positions=len(positions) if positions else 0,
-            )
-            if not guard_result.approved:
-                logger.warning(
-                    msg.AI_GUARD_BLOCKED.format(
-                        action=action.value,
-                        symbol=symbol,
-                        reason=guard_result.reasoning,
-                    )
-                )
-                return False
-
-            logger.info(msg.AI_MARKET_ANALYSING.format(symbol=symbol))
-            analysis_result = await self.gemini.analyze_market(symbol, timeframe="H1")
-            if not analysis_result:
-                logger.warning(msg.AI_MARKET_FAILED)
-
-            return True
-
-        except Exception as e:
-            logger.warning(msg.AI_GUARD_ERROR.format(error=e))
-            return True  # Fail open if AI check catastrophically fails but is enabled
-
     async def _dispatch_order(
         self, signal: TradeSignal, volume: float, base_comment: str
     ):
-        """Dispatch either a split order or a single order based on TP levels."""
+        """Dispatch a split or single order based on TP levels."""
         tp_levels = signal.tp_levels
 
         if tp_levels and isinstance(tp_levels, list) and len(tp_levels) > 1:

@@ -7,7 +7,6 @@ import sys
 from app.core import logger
 from app.core import messages as msg
 from app.engine.lifecycle import (
-    init_ai_services,
     init_engine_services,
     init_trading_logic,
     synchronize_state,
@@ -38,7 +37,6 @@ async def main():
         ) = await init_engine_services()
 
         order_queue.initialize(broker)
-        ai_service = init_ai_services(broker)
 
         (
             drawdown_manager,
@@ -50,7 +48,6 @@ async def main():
             correlation_manager,
             news_manager,
             broker,
-            ai_service=ai_service,
         )
 
         await synchronize_state(broker, drawdown_manager, tracker)

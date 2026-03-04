@@ -1,6 +1,5 @@
 """Application lifecycle: initialization and state sync."""
 
-from app.services.ai_service import AIService
 from app.services.analytics_service import AnalyticsService
 from app.core import messages as msg
 from app.core.di import container, init_container
@@ -14,9 +13,8 @@ from app.metaapi.adapter import MetaApiAdapter
 from app.risk.correlation import CorrelationManager
 from app.risk.drawdown import DrawdownManager
 from app.risk.manager import RiskManager
-from app.services.account import AccountService
-from app.utils.logger import logger
 from app.services.news_service import NewsService
+from app.utils.logger import logger
 
 
 async def init_engine_services() -> (
@@ -24,7 +22,6 @@ async def init_engine_services() -> (
 ):
     """Initialize brokers, managers, and data feed handlers."""
     logger.info(msg.APP_START)
-    logger.info("Initializing MetaAPI Adapter...")
     symbol_manager = SymbolManager()
     correlation_manager = CorrelationManager()
     news_manager = NewsService()
@@ -33,24 +30,13 @@ async def init_engine_services() -> (
     return symbol_manager, correlation_manager, news_manager, broker
 
 
-def init_ai_services(broker: MetaApiAdapter) -> AIService:
-    """Initialize AI services."""
-    ai_service = AIService(metaapi=broker)
-    if ai_service.is_available:
-        logger.success(msg.AI_ENABLED)
-    else:
-        logger.info(msg.AI_DISABLED_KEY)
-    return ai_service
-
-
 async def init_trading_logic(
     symbol_manager: SymbolManager,
     correlation_manager: CorrelationManager,
     news_manager: NewsService,
     broker: AbstractBroker,
-    ai_service: AIService = None,
 ) -> tuple[DrawdownManager, AnalyticsService, RiskManager, TradingBot]:
-    """Initialize trading logic, risk management, and the core bot via DI."""
+    """Initialize trading logic, risk management, and the core bot."""
     risk_manager = container.resolve(RiskManager)
     drawdown_manager = risk_manager.drawdown_manager
     executor = container.resolve(SignalExecutor)
@@ -61,9 +47,6 @@ async def init_trading_logic(
 
     strategy_manager = container.resolve(StrategyManager)
     active_trade_manager = container.resolve(ActiveTradeManager)
-
-    if ai_service:
-        executor.gemini = ai_service
 
     tracker = AnalyticsService(initial_balance=settings.DEFAULT_INITIAL_BALANCE)
 
@@ -76,39 +59,46 @@ async def init_trading_logic(
         watchdog=watchdog,
         strategy_manager=strategy_manager,
         active_trade_manager=active_trade_manager,
-        gemini=ai_service,
     )
 
     return drawdown_manager, tracker, risk_manager, trading_bot
 
 
 async def synchronize_state(
-    metaapi: "MetaApiAdapter", drawdown: DrawdownManager, tracker: AnalyticsService
+    metaapi: MetaApiAdapter, drawdown: DrawdownManager, tracker: AnalyticsService
 ) -> None:
     """Sync local state with live account equity."""
     try:
         await metaapi.initialize()
-        account_info = await metaapi.get_account_info()
-
-        if account_info:
-            initial_equity = account_info.equity
-            if initial_equity <= 0:
-                initial_equity = settings.DEFAULT_INITIAL_BALANCE
-
-            drawdown.initialize(initial_equity)
-            tracker.current_equity = initial_equity
-            tracker.initial_balance = initial_equity
-
-            if not tracker.equity_curve:
-                tracker.equity_curve = [initial_equity]
-            else:
-                tracker.equity_curve.append(initial_equity)
-
-            logger.success(msg.SERVICE_SYNC.format(equity=initial_equity))
-        else:
-            logger.warning(msg.SYNC_FAILED)
-            drawdown.initialize(settings.DEFAULT_INITIAL_BALANCE)
-
+        initial_equity = await _fetch_equity(metaapi)
+        _sync_drawdown(drawdown, initial_equity)
+        _sync_tracker(tracker, initial_equity)
+        logger.success(msg.SERVICE_SYNC.format(equity=initial_equity))
     except Exception as e:
         logger.warning(msg.SYNC_ERROR.format(error=e))
-        drawdown.initialize(settings.DEFAULT_INITIAL_BALANCE)
+        _sync_drawdown(drawdown, settings.DEFAULT_INITIAL_BALANCE)
+
+
+async def _fetch_equity(metaapi: MetaApiAdapter) -> float:
+    """Fetch live equity from broker, falling back to default on failure."""
+    account_info = await metaapi.get_account_info()
+    if not account_info:
+        logger.warning(msg.SYNC_FAILED)
+        return settings.DEFAULT_INITIAL_BALANCE
+    equity = account_info.equity
+    return equity if equity > 0 else settings.DEFAULT_INITIAL_BALANCE
+
+
+def _sync_drawdown(drawdown: DrawdownManager, equity: float) -> None:
+    """Initialize the drawdown manager with the given equity."""
+    drawdown.initialize(equity)
+
+
+def _sync_tracker(tracker: AnalyticsService, equity: float) -> None:
+    """Seed the analytics service equity curve with the live starting equity."""
+    tracker.current_equity = equity
+    tracker.initial_balance = equity
+    if not tracker.equity_curve:
+        tracker.equity_curve = [equity]
+    else:
+        tracker.equity_curve.append(equity)

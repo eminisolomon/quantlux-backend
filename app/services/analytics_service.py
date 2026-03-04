@@ -35,31 +35,45 @@ class AnalyticsService:
 
     def _load_trades(self) -> None:
         """Load historical trades from storage."""
-        if self.storage_path.exists():
-            try:
-                with open(self.storage_path) as f:
-                    trades_data = json.load(f)
-                self.trades = [Trade.model_validate(t) for t in trades_data]
-                # Rebuild equity curve from loaded trades
-                self.equity_curve = [self.initial_balance]
-                self.current_equity = self.initial_balance
-                for t in self.trades:
-                    self.current_equity += t.profit
-                    self.equity_curve.append(self.current_equity)
-                logger.info(msg.TRACKER_LOADED.format(count=len(self.trades)))
-            except Exception as e:
-                logger.error(msg.TRACKER_LOAD_ERROR.format(error=e))
-        else:
+        if not self.storage_path.exists():
             logger.info(msg.TRACKER_NO_HISTORY)
+            return
+
+        trades = self._read_trades_from_file()
+        if trades is not None:
+            self.trades = trades
+            self._rebuild_equity_curve()
+            logger.info(msg.TRACKER_LOADED.format(count=len(self.trades)))
+
+    def _read_trades_from_file(self) -> list | None:
+        """Deserialize trades from JSON storage."""
+        try:
+            with open(self.storage_path) as f:
+                return [Trade.model_validate(t) for t in json.load(f)]
+        except Exception as e:
+            logger.error(msg.TRACKER_LOAD_ERROR.format(error=e))
+            return None
+
+    def _rebuild_equity_curve(self) -> None:
+        """Replay trades to reconstruct the equity curve from the initial balance."""
+        self.equity_curve = [self.initial_balance]
+        self.current_equity = self.initial_balance
+        for t in self.trades:
+            self.current_equity += t.profit
+            self.equity_curve.append(self.current_equity)
 
     def _save_trades(self) -> None:
-        """Save current trades to storage."""
+        """Persist current trades list to JSON storage."""
         try:
-            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+            self._ensure_storage_dir()
             with open(self.storage_path, "w") as f:
                 json.dump([t.model_dump() for t in self.trades], f, indent=4)
         except Exception as e:
             logger.error(msg.TRACKER_SAVE_ERROR.format(error=e))
+
+    def _ensure_storage_dir(self) -> None:
+        """Create parent directories for storage path if they don't exist."""
+        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
 
     def load_history(self, trades: list[Trade]) -> None:
         """Populate tracker with a list of closed trades (from MetaApi or any source)."""

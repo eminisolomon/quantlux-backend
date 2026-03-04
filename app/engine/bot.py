@@ -21,13 +21,12 @@ class TradingBot:
         self,
         risk_manager: RiskManager,
         symbol_manager: SymbolManager,
-        news_manager: NewsManager,
+        news_manager: NewsService,
         trade_executor: MetaApiAdapter,
         executor: SignalExecutor,
         watchdog: MarketWatchdog,
         strategy_manager: StrategyManager,
         active_trade_manager: ActiveTradeManager,
-        gemini=None,
     ):
         self.is_running = False
         self.data_feed: MarketDataService | None = None
@@ -37,7 +36,6 @@ class TradingBot:
         self.trade_executor = trade_executor
         self.executor = executor
         self.watchdog = watchdog
-        self.gemini = gemini
         self.strategies = strategy_manager
         self.active_trade_manager = active_trade_manager
 

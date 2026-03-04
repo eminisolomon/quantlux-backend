@@ -2,31 +2,20 @@
 
 # ─── System & Connectivity ──────────────────────────────────────────
 
-CONNECT_SUCCESS = "✅ *Connected to MetaApi*\n\nAccount: {account_id}"
+CONNECT_SUCCESS = "✅ Connected to MetaApi — Account: {account_id}"
 CONNECT_FAILED = "❌ Failed to connect to MetaApi. Check your credentials."
 MT_NOT_CONNECTED = "❌ MetaApi Not Connected."
 ACC_INFO_FAILED = "❌ Could not retrieve account info."
 SERVICE_SYNC = "✅ Services synchronized with live equity: ${equity:.2f}"
 LATENCY_WARNING = "⚠️ HIGH LATENCY: {operation} took {latency:.2f}ms"
-APP_START = "🚀 Starting QuantLux Application"
-AI_ENABLED = "✨ AI features enabled (Gemini)"
-AI_DISABLED_KEY = "AI features disabled — set GEMINI_API_KEY to enable."
+APP_START = "🚀 Starting QuantLux Trading Bot"
 SYNC_FAILED = "⚠️ Could not sync with live account info; using default levels."
 SYNC_ERROR = "⚠️ Sync error: {error}. Defaulting risk levels."
-NOTIFY_ERROR = "❌ Notification error: {error}"
 SHUTDOWN_SIGNAL = "Shutdown signal received"
 RUNNING_MESSAGE = "QuantLux-FX is running! Press Ctrl+C to stop."
 SHUTDOWN_START = "Initiating graceful shutdown..."
 SHUTDOWN_COMPLETE_GOODBYE = "Shutdown complete. Goodbye!"
 FATAL_ERROR = "Fatal application error: {error}"
-
-AI_GUARD_BLOCKED = "🛡️ AI Risk Guard BLOCKED {action} {symbol}: {reason}"
-AI_GUARD_APPROVED = "🛡️ AI Risk Guard APPROVED {action} {symbol} (risk: {level})"
-AI_GUARD_ERROR = "⚠️ AI risk guard error: {error}"
-AI_GUARD_DISABLED = "AI risk guard disabled via settings."
-AI_GUARD_FAIL_OPEN = "AI guard error — proceeding with trade."
-AI_GUARD_UNAVAILABLE = "AI guard unavailable — proceeding with trade."
-AI_GUARD_EMPTY = "AI guard returned empty — proceeding with trade."
 
 CORR_UPDATING = "Updating correlation matrix..."
 CORR_UPDATED = "Correlation matrix updated."
@@ -42,7 +31,6 @@ BOT_CLEAR_POSITIONS = "Clearing symbol positions..."
 EMERGENCY_CLOSE_COMPLETE = "Emergency close complete: {count} positions closed."
 EMERGENCY_CLOSE_ERROR = "Critical error during emergency close: {error}"
 BOT_TICK_ERROR = "Error in on_tick for {symbol}: {error}"
-BOT_FATAL_ERROR = "Fatal error in bot loop: {error}"
 STRATEGY_REG_DEBUG = "Registered {strategy} for {symbol}"
 
 # ─── Trading & Risk ─────────────────────────────────────────────────
@@ -57,7 +45,6 @@ ALL_SPLIT_SUCCESS = "✅ All split orders executed for {symbol}"
 
 SPLITTER_DISABLED = "Split execution disabled. Executing single order for {symbol}."
 SPLITTER_START = "Splitting execution for {symbol}: {volumes} lots at TPs {levels}"
-NO_PENDING_ORDERS = "No pending orders."
 
 RISK_LIMIT_EXCEEDED = "❌ Risk limit exceeded: {reason}"
 INSUFFICIENT_MARGIN = "❌ Insufficient margin for trade on {symbol}"
@@ -67,14 +54,12 @@ MARGIN_LEVEL_LOW = "⚠️ Margin Level Low: {level:.2f}% (Limit: {limit}%)"
 DRAWDOWN_WARNING_DAILY = "⚠️ Daily DD at {percent:.0f}% of limit ({value:.2f}%)"
 DRAWDOWN_WARNING_TOTAL = "⚠️ Total DD at {percent:.0f}% of limit ({value:.2f}%)"
 
-WATCHDOG_PAUSE = "⚠️ Market Watchdog: Pausing {symbol} due to high spread: {spread:.5f} > {limit:.5f}"
-WATCHDOG_NORMAL = "✅ Market Watchdog: Market conditions normalized for {symbol}."
-WATCHDOG_STALE = "🚨 Market Watchdog: Stale data detected for {symbol}!"
+WATCHDOG_PAUSE = (
+    "⚠️ Watchdog: Pausing {symbol} — high spread {spread:.5f} > {limit:.5f}"
+)
+WATCHDOG_NORMAL = "✅ Watchdog: Market conditions normalized for {symbol}."
+WATCHDOG_STALE = "🚨 Watchdog: Stale data detected for {symbol}!"
 
-RISK_HEALTHY = "🟢 HEALTHY"
-RISK_CAUTION = "🟡 CAUTION"
-RISK_DANGER = "🔴 DANGER"
-RISK_DASHBOARD_TITLE = "⚠️ *RISK DASHBOARD*"
 RISK_DRAWDOWN_BLOCKED = "⚠️ Trade blocked by Drawdown Manager: {reason}"
 RISK_ACCOUNT_DISABLED = "⚠️ Risk Check Failed: Account trading is disabled."
 RISK_CORRELATION_BLOCKED = (
@@ -82,19 +67,7 @@ RISK_CORRELATION_BLOCKED = (
 )
 RISK_POSITIONS_FETCH_ERROR = "❌ Error fetching open positions for risk check: {error}"
 
-# ─── AI, Analytics & Backtesting ────────────────────────────────────
-
-AI_REPORT_GENERATING = "🔄 Generating AI performance report..."
-AI_REPORT_FAILED = "⚠️ Could not generate AI report."
-AI_MARKET_ANALYSING = "🔄 Analysing market for {symbol}..."
-AI_MARKET_FAILED = "⚠️ Could not analyse market."
-AI_GUARD_BLOCKED_ALT = "🛡️ AI Risk Guard blocked {action} {symbol}: {reason}"
-AI_GUARD_ERROR_ALT = "⚠️ AI Risk Guard error (fail-open): {error}"
-AI_FEATURES_DISABLED = "⚠️ AI features are disabled via settings."
-AI_UNAVAILABLE_API_KEY = "⚠️ AI features unavailable — GEMINI_API_KEY not configured."
-AI_EMPTY_RESPONSE = "⚠️ AI analysis returned empty — please try again later."
 NO_CANDLE_DATA = "⚠️ No candle data available for {symbol} {timeframe}."
-HISTORY_RETRIEVAL_ERROR = "❌ Error retrieving trade history. Please try again later."
 NO_CLOSED_TRADES = "📊 No closed trades found in storage."
 
 NEWS_FETCHING = "Fetching economic calendar..."
@@ -129,5 +102,4 @@ STRATEGY_FETCH_ERROR = "Error fetching data for strategy analysis: {error}"
 
 BACKTEST_FAILED = "❌ Backtest failed due to an internal error."
 BACKTEST_INVALID_DAYS = "❌ Days must be a number (e.g., /backtest EURUSD 30)"
-BACKTEST_START = "🔄 Starting backtest for *{symbol}*\\n📅 Period: {start} to {end} ({days} days)\\n💰 Initial Cash: ${cash:,.0f}"
 BACKTEST_NO_DATA = "❌ No data found for {symbol}. Check if the symbol is correct or data is available."
