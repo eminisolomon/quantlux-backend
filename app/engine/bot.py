@@ -108,34 +108,42 @@ class TradingBot:
             logger.error(msg.EMERGENCY_CLOSE_ERROR.format(error=e))
 
     async def on_tick(self, symbol: str, tick: TickData) -> None:
-        """Process incoming price tick: watchdog → news → strategy → execution."""
+        """Process incoming price tick pipeline orchestration."""
         if not self.is_running:
             return
 
         try:
-            if not await self.watchdog.check_tick(symbol, tick):
-                return
-
-            if not self.news_manager.should_trade(symbol):
+            if not await self._should_process_tick(symbol, tick):
                 return
 
             unified_signal = self.strategies.analyze_high_accuracy(symbol)
-
             if unified_signal:
-                from app.schemas.signal import TradeSignal
-
-                signal = TradeSignal(
-                    action=unified_signal.action,
-                    symbol=symbol,
-                    price=unified_signal.entry_price,
-                    stop_loss=unified_signal.stop_loss,
-                    take_profit=unified_signal.take_profit,
-                    confidence=unified_signal.confidence,
-                    reason=unified_signal.reason,
-                    comment=unified_signal.strategy_name,
-                    metadata=unified_signal.metadata,
-                )
-                await self.executor.process_signal(signal, strategy=None)
+                trade_signal = self._create_trade_signal(symbol, unified_signal)
+                await self.executor.process_signal(trade_signal, strategy=None)
 
         except Exception as e:
             logger.error(msg.BOT_TICK_ERROR.format(symbol=symbol, error=e))
+
+    async def _should_process_tick(self, symbol: str, tick: TickData) -> bool:
+        """Check watchdog and news manager to verify tick validity."""
+        if not await self.watchdog.check_tick(symbol, tick):
+            return False
+        if not self.news_manager.should_trade(symbol):
+            return False
+        return True
+
+    def _create_trade_signal(self, symbol: str, unified_signal):
+        """Map high accuracy unified signal to TradeSignal execution model."""
+        from app.schemas.signal import TradeSignal
+
+        return TradeSignal(
+            action=unified_signal.action,
+            symbol=symbol,
+            price=unified_signal.entry_price,
+            stop_loss=unified_signal.stop_loss,
+            take_profit=unified_signal.take_profit,
+            confidence=unified_signal.confidence,
+            reason=unified_signal.reason,
+            comment=unified_signal.strategy_name,
+            metadata=unified_signal.metadata,
+        )

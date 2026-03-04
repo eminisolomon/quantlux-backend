@@ -71,76 +71,89 @@ class ActiveTradeManager:
     ) -> None:
         try:
             is_buy = pos.type == "POSITION_TYPE_BUY"
+            pip_size = symbol_info.point * (10 if "JPY" in symbol_info.symbol else 1)
 
-            # Convert pips to price distance
-            point_value = symbol_info.point
-            # Adjust mapping for different pairs like JPY
-            pip_multiplier = 10 if "JPY" in symbol_info.symbol else 1
-            pip_size = point_value * pip_multiplier
+            current_profit_pips = (
+                (pos.currentPrice - pos.openPrice) / pip_size
+                if is_buy
+                else (pos.openPrice - pos.currentPrice) / pip_size
+            )
 
-            current_profit_pips = 0.0
-            if is_buy:
-                current_profit_pips = (pos.currentPrice - pos.openPrice) / pip_size
-            else:
-                current_profit_pips = (pos.openPrice - pos.currentPrice) / pip_size
+            breakeven_triggered = await self._handle_breakeven(
+                pos, is_buy, pip_size, current_profit_pips
+            )
 
-            # 1. Breakeven Check
-            if (
-                self.enable_breakeven
-                and current_profit_pips >= self.breakeven_trigger_pips
-            ):
-                new_sl = (
-                    pos.openPrice + (self.breakeven_lock_pips * pip_size)
-                    if is_buy
-                    else pos.openPrice - (self.breakeven_lock_pips * pip_size)
+            if not breakeven_triggered:
+                await self._handle_trailing_stop(
+                    pos, is_buy, pip_size, current_profit_pips
                 )
-
-                # Check if SL needs updating (only if current SL is worse than breakeven)
-                needs_update = False
-                if is_buy and (pos.stopLoss is None or pos.stopLoss < new_sl):
-                    needs_update = True
-                elif not is_buy and (
-                    pos.stopLoss is None or pos.stopLoss > new_sl or pos.stopLoss == 0
-                ):
-                    needs_update = True
-
-                if needs_update:
-                    logger.info(
-                        f"Moving SL to breakeven for {pos.symbol} (ID: {pos.id})"
-                    )
-                    await self.broker.modify_position(
-                        pos.id, stop_loss=new_sl, take_profit=pos.takeProfit
-                    )
-                    return  # Skip trailing stop logic this cycle
-
-            # 2. Trailing Stop Check
-            if (
-                self.enable_trailing_stop
-                and current_profit_pips >= self.trailing_stop_pips
-            ):
-                # Calculate new trailing stop loss
-                trail_distance = self.trailing_stop_pips * pip_size
-                new_sl = (
-                    pos.currentPrice - trail_distance
-                    if is_buy
-                    else pos.currentPrice + trail_distance
-                )
-
-                needs_update = False
-                if is_buy and (pos.stopLoss is None or new_sl > pos.stopLoss):
-                    needs_update = True
-                elif not is_buy and (
-                    pos.stopLoss is None or new_sl < pos.stopLoss or pos.stopLoss == 0
-                ):
-                    needs_update = True
-
-                if needs_update:
-                    logger.info(
-                        f"Trailing SL for {pos.symbol} (ID: {pos.id}) to {new_sl:.5f}"
-                    )
-                    await self.broker.modify_position(
-                        pos.id, stop_loss=new_sl, take_profit=pos.takeProfit
-                    )
 
         except Exception as e:
             logger.error(f"Trade management error for {pos.symbol}: {e}")
+
+    async def _handle_breakeven(
+        self,
+        pos: TradePosition,
+        is_buy: bool,
+        pip_size: float,
+        current_profit_pips: float,
+    ) -> bool:
+        """Apply breakeven stop loss if trigger conditions are met."""
+        if not (
+            self.enable_breakeven and current_profit_pips >= self.breakeven_trigger_pips
+        ):
+            return False
+
+        lock_dist = self.breakeven_lock_pips * pip_size
+        new_sl = pos.openPrice + lock_dist if is_buy else pos.openPrice - lock_dist
+
+        needs_update = False
+        if is_buy and (pos.stopLoss is None or pos.stopLoss < new_sl):
+            needs_update = True
+        elif not is_buy and (
+            pos.stopLoss is None or pos.stopLoss > new_sl or pos.stopLoss == 0
+        ):
+            needs_update = True
+
+        if needs_update:
+            logger.info(f"Moving SL to breakeven for {pos.symbol} (ID: {pos.id})")
+            await self.broker.modify_position(
+                pos.id, stop_loss=new_sl, take_profit=pos.takeProfit
+            )
+            return True
+
+        return False
+
+    async def _handle_trailing_stop(
+        self,
+        pos: TradePosition,
+        is_buy: bool,
+        pip_size: float,
+        current_profit_pips: float,
+    ) -> None:
+        """Apply trailing stop loss if trigger conditions are met."""
+        if not (
+            self.enable_trailing_stop and current_profit_pips >= self.trailing_stop_pips
+        ):
+            return
+
+        trail_distance = self.trailing_stop_pips * pip_size
+        new_sl = (
+            pos.currentPrice - trail_distance
+            if is_buy
+            else pos.currentPrice + trail_distance
+        )
+
+        needs_update = False
+        if is_buy and (pos.stopLoss is None or new_sl > pos.stopLoss):
+            needs_update = True
+        elif not is_buy and (
+            pos.stopLoss is None or new_sl < pos.stopLoss or pos.stopLoss == 0
+        ):
+            needs_update = True
+
+        if needs_update:
+            logger.info(f"Trailing SL for {pos.symbol} (ID: {pos.id}) to {new_sl:.5f}")
+            await self.broker.modify_position(
+                pos.id, stop_loss=new_sl, take_profit=pos.takeProfit
+            )

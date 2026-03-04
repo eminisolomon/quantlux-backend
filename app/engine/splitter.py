@@ -37,18 +37,42 @@ class SplitOrderManager:
             )
             return
 
-        num_orders = len(tp_levels)
-        base_vol = round(total_volume / num_orders, 2)
-        volumes = [base_vol] * num_orders
-        remainder = round(total_volume - sum(volumes), 2)
-        if remainder != 0:
-            volumes[-1] = round(volumes[-1] + remainder, 2)
+        volumes = self._calculate_split_volumes(total_volume, len(tp_levels))
 
         logger.info(
             msg.SPLITTER_START.format(symbol=symbol, volumes=volumes, levels=tp_levels)
         )
 
+        await self._dispatch_split_orders(
+            action, symbol, volumes, stop_loss, tp_levels, base_comment
+        )
+
+    def _calculate_split_volumes(
+        self, total_volume: float, num_orders: int
+    ) -> list[float]:
+        """Mathematically split volume equally across target steps with remainder matching on the last."""
+        base_vol = round(total_volume / num_orders, 2)
+        volumes = [base_vol] * num_orders
+
+        remainder = round(total_volume - sum(volumes), 2)
+        if remainder != 0:
+            volumes[-1] = round(volumes[-1] + remainder, 2)
+
+        return volumes
+
+    async def _dispatch_split_orders(
+        self,
+        action: SignalAction,
+        symbol: str,
+        volumes: list[float],
+        stop_loss: float | None,
+        tp_levels: list[float],
+        base_comment: str,
+    ) -> None:
+        """Enqueue individual order tasks for each portion of the split volume."""
         executed_count = 0
+        num_orders = len(tp_levels)
+
         for i, (vol, tp) in enumerate(zip(volumes, tp_levels)):
             if vol <= 0:
                 continue
