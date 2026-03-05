@@ -1,6 +1,6 @@
 """Core Strategy Adapter Logic."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -24,7 +24,6 @@ class StrategyAdapter:
         self.symbol = symbol
         self.primary_timeframe = primary_timeframe
 
-        # Initialize strategies
         self.ict = SmartMoneyStrategy(
             symbol=symbol,
             timeframe=primary_timeframe,
@@ -56,7 +55,6 @@ class StrategyAdapter:
 
         self.regime_detector = MarketRegimeDetector(adx_period=14, adx_threshold=25.0)
 
-        # Active strategies
         self.active_strategies = {
             "smart_money": True,
             "mean_reversion": True,
@@ -76,13 +74,11 @@ class StrategyAdapter:
         from app.engine.regime import MarketRegimeType
 
         if regime in [MarketRegimeType.TRENDING_BULL, MarketRegimeType.TRENDING_BEAR]:
-            # Trending markets: Follow trend with ICT and momentum
             self.active_strategies["mean_reversion"] = False
             self.active_strategies["rsi"] = False
             self.active_strategies["smart_money"] = True
             self.active_strategies["momentum"] = True
         else:
-            # Ranging or volatile markets: Mean reversion works best
             self.active_strategies["smart_money"] = False
             self.active_strategies["momentum"] = False
             self.active_strategies["mean_reversion"] = True
@@ -91,7 +87,6 @@ class StrategyAdapter:
     async def analyze(self) -> UnifiedSignal | None:
         """Analyze market with all active strategies."""
         try:
-            # Fetch data using MarketDataService
             data = await self._fetch_market_data()
 
             if not data:
@@ -100,25 +95,21 @@ class StrategyAdapter:
 
             self._update_regime_filters(data)
 
-            # Try Smart Money ICT strategy
             if self.active_strategies.get("smart_money"):
                 ict_signal = self._analyze_ict(data)
                 if ict_signal:
                     return ict_signal
 
-            # Try Mean Reversion strategy
             if self.active_strategies.get("mean_reversion"):
                 mr_signal = self._analyze_mean_reversion(data)
                 if mr_signal:
                     return mr_signal
 
-            # Try RSI strategy
             if self.active_strategies.get("rsi"):
                 rsi_signal = self._analyze_rsi(data)
                 if rsi_signal:
                     return rsi_signal
 
-            # Try Momentum strategy
             if self.active_strategies.get("momentum"):
                 momentum_signal = self._analyze_momentum(data)
                 if momentum_signal:
@@ -163,21 +154,16 @@ class StrategyAdapter:
         """Check for multi-strategy confluence (highest probability setups)."""
         signals = await self.analyze_multi_strategy()
 
-        # Filter out None signals
         active_signals = {k: v for k, v in signals.items() if v is not None}
 
         if len(active_signals) < 2:
             return None
 
-        # Check if signals agree on direction
         directions = [sig.action for sig in active_signals.values()]
 
         if len(set(directions)) == 1:
-            # All signals agree!
-            # Pick the highest confidence signal and boost it
             best_signal = max(active_signals.values(), key=lambda x: x.confidence)
 
-            # Boost confidence for confluence
             original_confidence = best_signal.confidence
             boosted_confidence = min(original_confidence * 1.15, 95.0)
 
@@ -326,7 +312,7 @@ class StrategyAdapter:
             confidence=signal.confidence,
             risk_reward_ratio=signal.risk_reward_ratio,
             reason=signal.reason,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             metadata={
                 "order_block": signal.order_block,
                 "fvg": signal.fvg,
@@ -346,7 +332,7 @@ class StrategyAdapter:
             confidence=signal.confidence,
             risk_reward_ratio=signal.risk_reward_ratio,
             reason=signal.reason,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             metadata={
                 "rsi_values": signal.rsi_values,
                 "bb_position": signal.bb_position,
@@ -366,7 +352,7 @@ class StrategyAdapter:
             confidence=signal.confidence,
             risk_reward_ratio=signal.risk_reward_ratio,
             reason=signal.reason,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             metadata={
                 "rsi_value": signal.rsi_value,
                 "regime": signal.regime,
@@ -386,7 +372,7 @@ class StrategyAdapter:
             confidence=signal.confidence,
             risk_reward_ratio=signal.risk_reward_ratio,
             reason=signal.reason,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             metadata={
                 "channel_width": signal.channel_width,
                 "volatility_state": signal.volatility_state,

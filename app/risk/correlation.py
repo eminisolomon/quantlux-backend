@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import yfinance as yf
@@ -22,9 +22,8 @@ class CorrelationManager:
         if not symbols:
             return
 
-        # Check if update is needed
         if (
-            datetime.now() - self.last_update < self.update_interval
+            datetime.now(timezone.utc) - self.last_update < self.update_interval
             and not self.correlation_matrix.empty
         ):
             return
@@ -39,19 +38,18 @@ class CorrelationManager:
                 progress=False,
             )
 
-            # Extract Close prices
             closes = pd.DataFrame()
             if len(symbols) == 1:
                 closes[symbols[0]] = data["Close"]
             else:
                 for symbol in symbols:
-                    if symbol in data.columns.levels[0]:  # MultiIndex check
+                    if symbol in data.columns.levels[0]:
                         closes[symbol] = data[symbol]["Close"]
-                    elif symbol in data.columns:  # Flat check
+                    elif symbol in data.columns:
                         closes[symbol] = data[symbol]
 
             self.correlation_matrix = closes.corr()
-            self.last_update = datetime.now()
+            self.last_update = datetime.now(timezone.utc)
             logger.info(msg.CORR_UPDATED)
             logger.debug(f"\n{self.correlation_matrix}")
 
@@ -64,7 +62,7 @@ class CorrelationManager:
         Returns False if correlation is too high (Risk!).
         """
         if self.correlation_matrix.empty:
-            return True  # Fail open if no data
+            return True
 
         if new_symbol not in self.correlation_matrix.columns:
             logger.warning(msg.CORR_SYM_NOT_FOUND.format(symbol=new_symbol))

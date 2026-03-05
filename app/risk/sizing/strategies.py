@@ -150,7 +150,6 @@ def calculate_kelly_lot(
         logger.warning(f"Kelly Criterion suggests no trade (Kelly %: {kelly_pct:.2%})")
         return 0.0
 
-    # Cap Kelly percentage at a reasonable level (e.g., 25%)
     max_kelly = 0.25
     if kelly_pct > max_kelly:
         logger.warning(
@@ -159,7 +158,6 @@ def calculate_kelly_lot(
         )
         kelly_pct = max_kelly
 
-    # Use Kelly percentage as risk percentage
     lot = calculate_risk_lot(account, symbol_info, kelly_pct * 100, sl_pips)
 
     logger.info(

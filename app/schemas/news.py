@@ -14,7 +14,7 @@ class NewsEvent(BaseModel):
     title: str
     country: str
     currency: str
-    impact: Impact  # High, Medium, Low
+    impact: Impact
     time: datetime
     forecast: str
     previous: str

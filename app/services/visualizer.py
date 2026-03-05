@@ -10,8 +10,8 @@ class PerformanceVisualizer:
 
     def __init__(self, style: str = "dark_background"):
         plt.style.use(style)
-        self.primary_color = "#00ffcc"  # Neon Cyan
-        self.secondary_color = "#ff3366"  # Neon Pink
+        self.primary_color = "#00ffcc"
+        self.secondary_color = "#ff3366"
         self.grid_color = "#333333"
 
     def plot_equity_curve(
@@ -55,7 +55,6 @@ class PerformanceVisualizer:
         """Plot drawdown 'underwater' chart."""
         fig, ax = plt.subplots(figsize=(10, 4))
 
-        # Calculate DD curve
         import numpy as np
 
         equity = np.array(equity_curve)
@@ -69,7 +68,7 @@ class PerformanceVisualizer:
 
         ax.set_title("Drawdown % (Underwater Chart)", fontsize=12, fontweight="bold")
         ax.set_ylabel("Drawdown %")
-        ax.set_ylim(None, 0.5)  # Focus on the negatives
+        ax.set_ylim(None, 0.5)
         ax.grid(True, color=self.grid_color, linestyle="--", alpha=0.5)
 
         buf = io.BytesIO()

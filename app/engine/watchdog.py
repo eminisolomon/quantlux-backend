@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core import messages as msg
 from app.core.settings import settings
@@ -53,7 +53,7 @@ class MarketWatchdog:
 
     def is_healthy(self, symbol: str) -> bool:
         """General health check for a symbol."""
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         last_time = self.last_tick_time.get(symbol)
 
         if not last_time:

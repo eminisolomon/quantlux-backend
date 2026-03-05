@@ -22,7 +22,6 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Environment & Secrets (from .env)
     TRADING_ENV: TradingEnvironment = TradingEnvironment.DEVELOPMENT
     LOG_LEVEL: LogLevel = LogLevel.INFO
 
@@ -44,7 +43,6 @@ class Settings(BaseSettings):
     METAAPI_ACCOUNT_ID: str | None = None
     METAAPI_REGION: str = "new-york"
 
-    # Trading Logic & Risk
     MAX_DAILY_DRAWDOWN_PCT: float = 5.0
     MAX_TOTAL_DRAWDOWN_PCT: float = 15.0
     PER_TRADE_RISK_PCT: float = 1.0
@@ -65,16 +63,13 @@ class Settings(BaseSettings):
     DEFAULT_INITIAL_BALANCE: float = 10000.0
     RISK_FREE_RATE: float = 0.02
 
-    # Strategy Settings
     USE_RSI_STRATEGY: bool = True
 
-    # News Filter Settings
     FOREXFACTORY_BASE_URL: str = "https://www.forexfactory.com/calendar?day={}"
     NEWS_IMPACT_FILTER: list[str] = ["High", "Medium"]
     NEWS_PAUSE_MINUTES_BEFORE: int = 30
     NEWS_PAUSE_MINUTES_AFTER: int = 30
 
-    # Connectivity & Intervals
     FEED_POLL_INTERVAL: int = 1
     FEED_ERROR_INTERVAL: int = 5
     MT5_RECONNECT_INTERVAL: int = 10

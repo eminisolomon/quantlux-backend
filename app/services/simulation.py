@@ -38,18 +38,14 @@ class MonteCarloSimulator:
         ruined_count = 0
 
         for _ in range(self.iterations):
-            # Shuffle returns to simulate different sequences
             sim_profits = np.random.choice(profits, size=len(profits), replace=True)
             equity_curve = self.initial_balance + np.cumsum(sim_profits)
 
-            # Final balance
             final_balances.append(equity_curve[-1])
 
-            # Ruin check (e.g., balance < 20% of initial)
             if np.any(equity_curve < (self.initial_balance * 0.2)):
                 ruined_count += 1
 
-            # Max DD calculation
             peak = np.maximum.accumulate(equity_curve)
             dd = (peak - equity_curve) / peak * 100
             max_drawdowns.append(np.max(dd))

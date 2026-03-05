@@ -29,12 +29,10 @@ class ParameterOptimizer:
 
         cerebro = bt.Cerebro(optreturn=False, maxcpus=1)
 
-        # Add analyzers
         cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name="sharpe")
         cerebro.addanalyzer(bt.analyzers.DrawDown, _name="drawdown")
         cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="trades")
 
-        # Add strategy with param grid
         cerebro.optstrategy(strategy_class, **param_grid)
 
         bt_data = bt.feeds.PandasData(dataname=data)
@@ -58,7 +56,6 @@ class ParameterOptimizer:
             strat = run[0]
             params = strat.params._getkwargs()
 
-            # Parse analyzer results
             sharpe_analysis = strat.analyzers.sharpe.get_analysis()
             sharpe = sharpe_analysis.get("sharperatio", 0) if sharpe_analysis else 0
             if sharpe is None:
@@ -67,7 +64,6 @@ class ParameterOptimizer:
             drawdown = strat.analyzers.drawdown.get_analysis()
             trades = strat.analyzers.trades.get_analysis()
 
-            # Metrics
             final_value = strat.broker.getvalue()
             net_profit = final_value - self.initial_cash
             roi = (net_profit / self.initial_cash) * 100
@@ -96,7 +92,6 @@ class ParameterOptimizer:
                 "profit_factor": profit_factor,
             }
 
-            # Select the metric to optimize
             metric_value = result_summary.get(optimize_metric, -float("inf"))
 
             if metric_value > best_metric_value:
@@ -151,7 +146,6 @@ class ParameterOptimizer:
             train_end = current_date + timedelta(days=train_days)
             test_end = train_end + timedelta(days=test_days)
 
-            # Split data
             train_data = data[(data.index >= current_date) & (data.index < train_end)]
             test_data = data[(data.index >= train_end) & (data.index < test_end)]
 
@@ -159,7 +153,6 @@ class ParameterOptimizer:
                 f"WFA Window | Train: {current_date.date()} to {train_end.date()} | Test: {train_end.date()} to {test_end.date()}"
             )
 
-            # 1. Optimize on Train Data
             opt_result = self.run_grid_search(
                 data=train_data,
                 strategy_class=strategy_class,
@@ -171,7 +164,6 @@ class ParameterOptimizer:
 
             best_params = opt_result.get("best_params") or {}
 
-            # 2. Forward Test on Out-of-Sample (Test) Data using best params
             test_result = engine.run_backtest(
                 data=test_data,
                 strategy_class=strategy_class,
@@ -190,17 +182,14 @@ class ParameterOptimizer:
                 }
             )
 
-            # Accumulate overall WFA metrics
             total_net_profit += test_result.get("net_profit", 0)
             total_trades += test_result.get("total_trades", 0)
             total_won += test_result.get("won_trades", 0)
             total_gross_profit += test_result.get("gross_profit", 0)
             total_gross_loss += test_result.get("gross_loss", 0)
 
-            # Shift window forward by test_days
             current_date += timedelta(days=test_days)
 
-        # Calculate final aggregated WFA metrics
         overall_win_rate = (total_won / total_trades * 100) if total_trades > 0 else 0
         overall_profit_factor = (
             (total_gross_profit / total_gross_loss) if total_gross_loss > 0 else 0

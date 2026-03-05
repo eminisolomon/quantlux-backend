@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Command-line backtesting utility for QuantLux-FX
 
@@ -87,7 +86,6 @@ def main():
 
     args = parser.parse_args()
 
-    # Interactive Mode
     if not args.symbol:
         try:
             from app.core.symbols import get_symbol_manager
@@ -128,7 +126,6 @@ def main():
         logger.info(f"Period: {args.start} to {args.end}")
         logger.info(f"Initial cash: ${args.cash:.2f}")
 
-        # Load historical data
         data = load_sample_data(symbol=args.symbol, start=args.start, end=args.end)
 
         if len(data) == 0:
@@ -137,7 +134,6 @@ def main():
 
         if args.wfa or args.optimize:
             optimizer = ParameterOptimizer(initial_cash=args.cash)
-            # Define a small parameter grid for demonstration
             param_grid = {
                 "rsi_period": range(10, 18, 2),
                 "rsi_oversold": range(25, 35, 5),
@@ -180,7 +176,6 @@ def main():
                 print("=" * 50 + "\n")
             return 0
 
-        # Setup standard strategy parameters
         strategy_params = {
             "rsi_period": args.rsi_period,
             "rsi_oversold": args.rsi_oversold,
@@ -191,7 +186,6 @@ def main():
 
         logger.info(f"Strategy params: {strategy_params}")
 
-        # Run backtest
         engine = BacktestEngine(initial_cash=args.cash)
         results = engine.run_backtest(
             data=data,
@@ -200,10 +194,8 @@ def main():
             commission=args.commission,
         )
 
-        # Print results
         engine.print_results(results)
 
-        # Provide recommendations
         print("📝 Analysis:")
         if results["sharpe_ratio"] > 1.5:
             print("  ✅ Excellent risk-adjusted returns (Sharpe > 1.5)")

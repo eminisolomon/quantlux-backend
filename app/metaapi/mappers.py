@@ -47,13 +47,10 @@ def map_account_info(data: dict[str, Any]) -> AccountInfo:
     """
     Map raw MetaApi account information to the AccountInfo domain model.
     """
-    # Create a copy to avoid mutating the original
     mapped = data.copy()
 
-    # Handle Enum translation
     mapped["type"] = map_account_type(data.get("type"))
 
-    # Ensure trade_allowed exists (from research: tradeAllowed in raw API)
     if "tradeAllowed" in mapped and "trade_allowed" not in mapped:
         mapped["trade_allowed"] = mapped["tradeAllowed"]
 
@@ -89,7 +86,6 @@ def map_trade_position(data: dict[str, Any]) -> TradePosition:
     """
     mapped = data.copy()
 
-    # Handle type mapping
     if "type" in mapped:
         mapped["type"] = map_signal_action(mapped["type"])
 
@@ -102,7 +98,6 @@ def map_trade_order(data: dict[str, Any]) -> TradeOrder:
     """
     mapped = data.copy()
 
-    # Handle type mapping
     if "type" in mapped:
         mapped["type"] = map_signal_action(mapped["type"])
 

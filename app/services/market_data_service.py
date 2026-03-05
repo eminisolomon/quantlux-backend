@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pandas as pd
@@ -41,8 +41,6 @@ class MarketDataService:
         self._task: asyncio.Task | None = None
         self._lock = asyncio.Lock()
         self._callbacks: list[Callable[[str, TickData], None]] = []
-
-    # ─── Real-time Feed Management ──────────────────────────────────────
 
     def register_callback(self, callback: Callable[[str, TickData], None]) -> None:
         self._callbacks.append(callback)
@@ -112,8 +110,6 @@ class MarketDataService:
                 logger.error(msg.FEED_ERROR.format(error=e))
                 await asyncio.sleep(settings.FEED_ERROR_INTERVAL)
 
-    # ─── Historical Data Management ─────────────────────────────────────
-
     @staticmethod
     def _calculate_start_time(
         start_time: datetime | None, limit: int, timeframe: str
@@ -134,7 +130,7 @@ class MarketDataService:
         }
 
         minutes = timeframe_minutes.get(timeframe, 60)
-        return datetime.now() - timedelta(minutes=minutes * limit)
+        return datetime.now(timezone.utc) - timedelta(minutes=minutes * limit)
 
     @retry_on_error(max_retries=3, initial_delay=1.0)
     async def get_candles(
@@ -160,7 +156,6 @@ class MarketDataService:
                 f"Fetching candles: {symbol} {timeframe} from {calculated_start}"
             )
 
-            # Using adapter instead of direct MetaApiConnection
             with latency_monitor.measure("get_candles"):
                 candles = await self.metaapi.read_candles(
                     symbol=symbol,
@@ -228,14 +223,11 @@ class MarketDataService:
 
         try:
             if not start_time:
-                start_time = datetime.now() - timedelta(hours=1)
+                start_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
             logger.debug(f"Fetching ticks: {symbol} from {start_time}")
 
-            # Note: Assuming adapter exposes read_ticks if supported, fallback to connection if needed.
             with latency_monitor.measure("get_ticks"):
-                # Will depend on MetaApiAdapter implementation, assuming it routes properly
-                # If adapter doesn't expose it, we would need to grab the abstract connection
                 ticks = await self.metaapi.read_ticks(
                     symbol=symbol, start_time=start_time, limit=limit
                 )

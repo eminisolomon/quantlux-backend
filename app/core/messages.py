@@ -1,7 +1,5 @@
 """Centralized repository for all system messages and strings."""
 
-# ─── System & Connectivity ──────────────────────────────────────────
-
 CONNECT_SUCCESS = "✅ Connected to MetaApi — Account: {account_id}"
 CONNECT_FAILED = "❌ Failed to connect to MetaApi. Check your credentials."
 MT_NOT_CONNECTED = "❌ MetaApi Not Connected."
@@ -33,7 +31,6 @@ EMERGENCY_CLOSE_ERROR = "Critical error during emergency close: {error}"
 BOT_TICK_ERROR = "Error in on_tick for {symbol}: {error}"
 STRATEGY_REG_DEBUG = "Registered {strategy} for {symbol}"
 
-# ─── Trading & Risk ─────────────────────────────────────────────────
 
 TRADE_EXECUTION_FAILED = "❌ EXECUTION FAILED {symbol}: {error}"
 TRADE_SUCCESS = "✅ {symbol} Order executed: {volume} {action} @ {price}"

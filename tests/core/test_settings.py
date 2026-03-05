@@ -15,7 +15,6 @@ def mock_symbols():
 
 
 def test_required_settings():
-    # Providing ENV vars
     settings = Settings(
         TRADING_ENV=TradingEnvironment.DEVELOPMENT,
         METAAPI_TOKEN="test_token",

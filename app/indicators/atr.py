@@ -21,7 +21,6 @@ def calculate_atr(
         tr = max(h_l, h_pc, l_pc)
         true_ranges.append(tr)
 
-    # Simple Moving Average of True Range
     if len(true_ranges) < period:
         return 0.0
 

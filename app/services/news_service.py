@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import httpx
 from bs4 import BeautifulSoup
 
@@ -25,7 +25,7 @@ class EconomicCalendar:
         """Fetch economic calendar events."""
         logger.info(msg.NEWS_FETCHING)
         if date is None:
-            date = datetime.now()
+            date = datetime.now(timezone.utc)
 
         date_str = date.strftime("%b%d.%Y").lower()
         url = self.BASE_URL.format(date_str)
@@ -128,7 +128,7 @@ class EconomicCalendar:
 
     async def get_upcoming_high_impact(self, hours: int = 24) -> list[NewsEvent]:
         """Fetches high impact news for the upcoming hours."""
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         events_today = await self.get_calendar(now)
         events_tomorrow = await self.get_calendar(now + timedelta(days=1))
         events = events_today + events_tomorrow
@@ -187,7 +187,7 @@ class NewsService:
     async def _update_calendar(self):
         """Refresh internal events cache."""
         async with self._lock:
-            today = datetime.now()
+            today = datetime.now(timezone.utc)
             events_today = await self.calendar.get_calendar(today)
             events_tomorrow = await self.calendar.get_calendar(
                 today + timedelta(days=1)
@@ -197,7 +197,7 @@ class NewsService:
             allowed_impacts = [Impact(i) for i in settings.NEWS_IMPACT_FILTER]
 
             self.events = [e for e in all_events if e.impact in allowed_impacts]
-            self.last_update = datetime.now()
+            self.last_update = datetime.now(timezone.utc)
 
             logger.info(msg.NEWS_UPDATED.format(count=len(self.events)))
 
@@ -208,7 +208,7 @@ class NewsService:
 
         currencies = self._get_relevant_currencies(symbol)
 
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
 
         for event in self.events:
             if event.currency not in currencies and event.currency != "All":

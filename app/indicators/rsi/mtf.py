@@ -26,14 +26,12 @@ class MultiTimeframeRSI:
 
         for tf in timeframes:
             try:
-                # Get candles for this timeframe
                 df = await data_service.get_candles_as_dataframe(symbol, tf, limit=100)
 
                 if df is None or df.empty:
                     logger.warning(f"No data for {symbol} {tf}")
                     continue
 
-                # Calculate RSI
                 rsi_series = self.rsi_calculator.calculate(df["close"])
                 current_rsi = rsi_series.iloc[-1] if not rsi_series.empty else None
 
@@ -61,7 +59,6 @@ class MultiTimeframeRSI:
         buy_count = signals.count(SignalAction.BUY)
         sell_count = signals.count(SignalAction.SELL)
 
-        # Require majority (>50%) agreement
         threshold = len(signals) / 2
 
         if buy_count > threshold:

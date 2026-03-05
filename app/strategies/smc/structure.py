@@ -28,7 +28,7 @@ class StructurePoint:
 class StructureBreak:
     """Represents a break of market structure."""
 
-    type: StructureType  # Break of Structure or Change of Character
+    type: StructureType
     direction: MarketRegime
     price: float
     time: datetime
@@ -47,14 +47,11 @@ class MarketStructureAnalyzer:
         self, df: pd.DataFrame
     ) -> tuple[list[StructurePoint], list[StructureBreak]]:
         """Analyze market structure. Returns (swing_points, structure_breaks)."""
-        # Find swing highs and lows
         swing_highs = self._find_swing_highs(df)
         swing_lows = self._find_swing_lows(df)
 
-        # Combine and sort by time
         all_swings = sorted(swing_highs + swing_lows, key=lambda x: x.index)
 
-        # Identify structure breaks
         structure_breaks = self._identify_structure_breaks(all_swings, df)
 
         logger.info(
@@ -69,7 +66,6 @@ class MarketStructureAnalyzer:
         for i in range(self.swing_lookback, len(df) - self.swing_lookback):
             current_high = df.iloc[i]["high"]
 
-            # Check if this is higher than surrounding candles
             is_swing_high = True
 
             for j in range(i - self.swing_lookback, i + self.swing_lookback + 1):
@@ -98,7 +94,6 @@ class MarketStructureAnalyzer:
         for i in range(self.swing_lookback, len(df) - self.swing_lookback):
             current_low = df.iloc[i]["low"]
 
-            # Check if this is lower than surrounding candles
             is_swing_low = True
 
             for j in range(i - self.swing_lookback, i + self.swing_lookback + 1):
@@ -133,17 +128,14 @@ class MarketStructureAnalyzer:
             current_swing = swings[i]
             previous_swing = swings[i - 1]
 
-            # Skip if same type consecutive
             if current_swing.type == previous_swing.type:
                 continue
 
-            # Check for bullish structure break
             if (
                 current_swing.type == SwingType.HIGH
                 and previous_swing.type == SwingType.LOW
             ):
                 if current_swing.price > previous_swing.price:
-                    # Price made higher high - bullish
                     break_type = (
                         StructureType.BOS
                         if self.current_trend == MarketRegime.BULLISH
@@ -163,13 +155,11 @@ class MarketStructureAnalyzer:
                     if break_type == StructureType.CHOCH:
                         self.current_trend = MarketRegime.BULLISH
 
-            # Check for bearish structure break
             elif (
                 current_swing.type == SwingType.LOW
                 and previous_swing.type == SwingType.HIGH
             ):
                 if current_swing.price < previous_swing.price:
-                    # Price made lower low - bearish
                     break_type = (
                         StructureType.BOS
                         if self.current_trend == MarketRegime.BEARISH
@@ -198,7 +188,6 @@ class MarketStructureAnalyzer:
         if not structure_breaks:
             return None
 
-        # Get most recent structure break
         recent_break = structure_breaks[-1]
 
         if recent_break.type in [StructureType.CHOCH, StructureType.BOS]:

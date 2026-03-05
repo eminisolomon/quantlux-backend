@@ -1,7 +1,7 @@
 """Performance metrics tracking: Sharpe, Sortino, drawdown, win rate."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -66,7 +66,6 @@ class AnalyticsService:
         self.trades = trades
         self._rebuild_equity_curve()
 
-        # Clear and repopulate Redis list atomically
         pipe = redis.pipeline()
         pipe.delete(self.redis_key)
         if trades:
@@ -100,7 +99,7 @@ class AnalyticsService:
         if days:
             if not trades:
                 return PerformanceStats()
-            cutoff = datetime.now().timestamp() - (days * 86400)
+            cutoff = datetime.now(timezone.utc).timestamp() - (days * 86400)
             filtered_trades = [t for t in trades if t.close_time.timestamp() >= cutoff]
             trades = filtered_trades
 

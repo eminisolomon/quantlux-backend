@@ -48,8 +48,6 @@ class MetaApiAdapter(AbstractBroker):
         """Get current terminal state."""
         return await MetaApiConnection.get_terminal_state()
 
-    # --- Information Methods ---
-
     async def get_account_info(self) -> AccountInfo | None:
         """Get account information."""
         info = await MetaApiInfo.get_account_info()
@@ -65,7 +63,6 @@ class MetaApiAdapter(AbstractBroker):
         orders = await MetaApiInfo.get_orders(symbol)
         return [map_trade_order(o) for o in orders]
 
-        # Symbol info comes from the connection directly now, bypassing the removed MetaApiData static
         try:
             from app.metaapi.connection import MetaApiConnection
 
@@ -77,8 +74,6 @@ class MetaApiAdapter(AbstractBroker):
 
             logger.error(f"Adapter get_symbol_info failed: {e}")
             return None
-
-    # --- Execution Methods ---
 
     async def create_market_buy_order(
         self,
@@ -124,8 +119,6 @@ class MetaApiAdapter(AbstractBroker):
     async def cancel_order(self, order_id: str) -> dict[str, Any]:
         """Cancel pending order."""
         return await self.executor.cancel_order(order_id)
-
-    # --- Data Methods ---
 
     async def symbol_select(self, symbol: str, enable: bool = True) -> bool:
         """Subscribe/unsubscribe market data."""

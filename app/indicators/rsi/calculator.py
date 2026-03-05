@@ -22,25 +22,21 @@ class ModernRSI:
             )
             return pd.Series(index=prices.index, dtype=float)
 
-        # Calculate price changes
         delta = prices.diff()
 
-        # Separate gains and losses
         gains = delta.where(delta > 0, 0.0)
         losses = -delta.where(delta < 0, 0.0)
 
-        # Calculate average gains/losses based on smoothing method
         if self.config.smoothing == RSISmoothing.WILDER:
             avg_gains = self._wilder_smoothing(gains, self.config.period)
             avg_losses = self._wilder_smoothing(losses, self.config.period)
         elif self.config.smoothing == RSISmoothing.EMA:
             avg_gains = gains.ewm(span=self.config.period, adjust=False).mean()
             avg_losses = losses.ewm(span=self.config.period, adjust=False).mean()
-        else:  # sma
+        else:
             avg_gains = gains.rolling(window=self.config.period).mean()
             avg_losses = losses.rolling(window=self.config.period).mean()
 
-        # Calculate RS and RSI
         rs = avg_gains / avg_losses
         rsi = 100 - (100 / (1 + rs))
 
@@ -65,14 +61,11 @@ class ModernRSI:
         if len(prices) < lookback:
             return self.config.period
 
-        # Calculate ATR-based volatility
         returns = prices.pct_change().iloc[-lookback:]
         volatility = returns.std()
 
-        # Normalize volatility to period range (7-28)
-        # Higher volatility = lower period (more sensitive)
         min_period, max_period = 7, 28
-        normalized = np.clip(volatility * 1000, 0, 1)  # Scale factor
+        normalized = np.clip(volatility * 1000, 0, 1)
         adaptive_period = int(max_period - (normalized * (max_period - min_period)))
 
         return adaptive_period

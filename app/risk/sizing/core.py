@@ -19,7 +19,6 @@ def normalize_volume(volume: float, symbol_info: SymbolInfo) -> float:
         logger.warning(f"Volume {volume:.2f} exceeds maximum. Capping at {max_vol}")
         volume = max_vol
 
-    # Round to 2 decimal places for cleaner output
     return round(volume, 2)
 
 

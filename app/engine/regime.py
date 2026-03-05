@@ -37,7 +37,6 @@ class MarketRegimeDetector:
         if df.empty or len(df) < self.slow_ema:
             return MarketRegimeType.RANGING
 
-        # Calculate Indicators
         adx_df = calculate_adx(df, period=self.adx_period)
         ema_fast = df["close"].ewm(span=self.fast_ema, adjust=False).mean()
         ema_slow = df["close"].ewm(span=self.slow_ema, adjust=False).mean()
@@ -49,14 +48,11 @@ class MarketRegimeDetector:
         current_fast = ema_fast.iloc[-1]
         current_slow = ema_slow.iloc[-1]
 
-        # Check Trend Strength
         is_trending = current_adx >= self.adx_threshold
 
         if is_trending:
-            # Bullish: +DI > -DI and Fast EMA > Slow EMA
             if pos_di > neg_di and current_fast > current_slow:
                 return MarketRegimeType.TRENDING_BULL
-            # Bearish: -DI > +DI and Fast EMA < Slow EMA
             elif neg_di > pos_di and current_fast < current_slow:
                 return MarketRegimeType.TRENDING_BEAR
             else:

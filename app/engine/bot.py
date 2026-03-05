@@ -118,7 +118,6 @@ class TradingBot:
             if unified_signal:
                 trade_signal = self._create_trade_signal(symbol, unified_signal)
 
-                # Signal deduplication using Redis lock
                 from app.core.redis_client import redis_client
                 import time
 
@@ -126,7 +125,6 @@ class TradingBot:
                 minute_timestamp = int(time.time() / 60)
                 lock_key = f"quantlux:lock:signal:{symbol}:{trade_signal.action.value}:{minute_timestamp}"
 
-                # SETNX with 65s expiry gives enough window to prevent duplicate identical signals
                 acquired = await redis.set(lock_key, "1", ex=65, nx=True)
 
                 if acquired:

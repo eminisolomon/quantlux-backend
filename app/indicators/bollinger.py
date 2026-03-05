@@ -14,8 +14,8 @@ class BollingerBandsResult:
     upper_band: pd.Series
     middle_band: pd.Series
     lower_band: pd.Series
-    bandwidth: pd.Series  # Distance between bands
-    percent_b: pd.Series  # Where price is relative to bands (0-1)
+    bandwidth: pd.Series
+    percent_b: pd.Series
 
     def get_current_position(self, price: float) -> str:
         """Get current price position relative to bands."""
@@ -59,26 +59,20 @@ class AdaptiveBollingerBands:
 
         closes = df["close"]
 
-        # Calculate middle band (SMA)
         middle_band = closes.rolling(window=self.period).mean()
 
-        # Calculate standard deviation
         std = closes.rolling(window=self.period).std()
 
         if self.adaptive:
-            # Adjust multiplier based on ATR
             multiplier = self._calculate_adaptive_multiplier(df)
         else:
             multiplier = self.std_dev
 
-        # Calculate upper and lower bands
         upper_band = middle_band + (std * multiplier)
         lower_band = middle_band - (std * multiplier)
 
-        # Calculate bandwidth (volatility indicator)
         bandwidth = (upper_band - lower_band) / middle_band * 100
 
-        # Calculate %B (price position within bands)
         percent_b = (closes - lower_band) / (upper_band - lower_band)
 
         return BollingerBandsResult(
@@ -91,7 +85,6 @@ class AdaptiveBollingerBands:
 
     def _calculate_adaptive_multiplier(self, df: pd.DataFrame) -> pd.Series:
         """Calculate adaptive multiplier based on ATR."""
-        # Calculate ATR
         high = df["high"]
         low = df["low"]
         close = df["close"]
@@ -103,11 +96,8 @@ class AdaptiveBollingerBands:
         tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
         atr = tr.rolling(window=self.atr_period).mean()
 
-        # Normalize ATR to create multiplier
-        # Higher volatility = wider bands
         atr_normalized = atr / close
 
-        # Scale to reasonable range (1.5 to 3.0)
         min_mult, max_mult = 1.5, 3.0
         multiplier = min_mult + (atr_normalized * 100)
         multiplier = multiplier.clip(min_mult, max_mult)

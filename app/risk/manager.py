@@ -50,7 +50,6 @@ class RiskManager:
             logger.warning(msg.RISK_ACCOUNT_DISABLED)
             return False
 
-        # Position Count Limits
         try:
             if open_positions_count is None:
                 open_positions = await self._get_open_positions()
@@ -62,7 +61,6 @@ class RiskManager:
             logger.warning(f"Trade blocked: {e}")
             return False
 
-        # Financial Health (Margin)
         try:
             if not self._check_margin_levels(account):
                 return False
@@ -70,7 +68,6 @@ class RiskManager:
             logger.warning(f"Trade blocked: {e}")
             return False
 
-        # Market Condition (Spread/Slippage)
         try:
             if not self._check_spread(symbol):
                 return False
@@ -78,7 +75,6 @@ class RiskManager:
             logger.warning(f"Trade blocked: {e}")
             return False
 
-        # Instrument Constraints (Volume)
         try:
             if not self._check_volume(symbol, volume):
                 return False
@@ -86,13 +82,11 @@ class RiskManager:
             logger.warning(f"Trade blocked: {e}")
             return False
 
-        # Portfolio Exposure (Correlation)
         open_symbols = await self._get_open_symbols()
         if not self.correlation_manager.check_correlation(symbol.symbol, open_symbols):
             logger.warning(msg.RISK_CORRELATION_BLOCKED.format(symbol=symbol.symbol))
             return False
 
-        # News Check
         if not await self.broker.is_safe_to_trade_news(
             symbol=symbol,
             impact_minutes_before=settings.NEWS_PAUSE_MINUTES_BEFORE,

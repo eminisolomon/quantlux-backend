@@ -102,6 +102,5 @@ async def _sync_tracker(tracker: AnalyticsService, equity: float) -> None:
     if not tracker.equity_curve:
         tracker.equity_curve = [equity]
     else:
-        # Avoid duplicate appending if the state already has it (usually tracked by the last trade)
         if tracker.equity_curve[-1] != equity:
             tracker.equity_curve.append(equity)

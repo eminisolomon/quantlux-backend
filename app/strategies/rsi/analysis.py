@@ -19,11 +19,9 @@ class RSIAnalyzer:
         max_rsi = recent_rsi.max()
         avg_rsi = recent_rsi.mean()
 
-        # Bullish rules
         if min_rsi >= 35 and max_rsi > 65 and avg_rsi > 50:
             return MarketRegime.BULLISH
 
-        # Bearish rules
         if max_rsi <= 65 and min_rsi < 35 and avg_rsi < 50:
             return MarketRegime.BEARISH
 
@@ -43,20 +41,15 @@ class RSIAnalyzer:
         if len(rsi_series) < 5:
             return False
 
-        # Get last 5 points for pattern recognition
         p1, p2, p3, p4, current = rsi_series.iloc[-5:].values
 
-        # 1. Swing Low (< 30) (p1 or p2)
         swing_low_formed = p1 < 30 or p2 < 30
 
-        # 2. Bounce (High)
         bounce_high = max(p2, p3)
 
-        # 3. Higher Low (The "Failure")
         failure_low = min(p3, p4)
         is_higher_low = failure_low > min(p1, p2)
 
-        # 4. Breakout
         breakout = current > bounce_high
 
         return swing_low_formed and is_higher_low and breakout
@@ -77,17 +70,13 @@ class RSIAnalyzer:
 
         p1, p2, p3, p4, current = rsi_series.iloc[-5:].values
 
-        # 1. Swing High (> 70)
         swing_high_formed = p1 > 70 or p2 > 70
 
-        # 2. Pullback (Low)
         pullback_low = min(p2, p3)
 
-        # 3. Lower High (The "Failure")
         failure_high = max(p3, p4)
         is_lower_high = failure_high < max(p1, p2)
 
-        # 4. Breakdown
         breakdown = current < pullback_low
 
         return swing_high_formed and is_lower_high and breakdown

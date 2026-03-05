@@ -37,7 +37,6 @@ class MeanReversionSignalGenerator:
         reason_parts = []
         rsi_values = {}
 
-        # RSI confirmation
         current_rsi = rsi_series.iloc[-1]
         rsi_values["primary"] = current_rsi
 
@@ -48,7 +47,6 @@ class MeanReversionSignalGenerator:
             confidence += 15.0
             reason_parts.append(f"Oversold RSI {current_rsi:.1f}")
 
-        # Bollinger Band extreme
         percent_b = bb_result.percent_b.iloc[-1]
         if percent_b < 0:
             confidence += 15.0
@@ -57,34 +55,29 @@ class MeanReversionSignalGenerator:
             confidence += 10.0
             reason_parts.append("Price near lower BB")
 
-        # Multi-timeframe RSI confirmation
         if mtf_data:
             mtf_oversold = self._check_mtf_oversold(mtf_data, rsi_values)
             if mtf_oversold >= 2:
                 confidence += 15.0
                 reason_parts.append(f"{mtf_oversold} TF oversold")
 
-        # RSI divergence check
         if self.divergence_detector.detect_bullish_divergence(
             df["close"], rsi_series, lookback=20
         ):
             confidence += 15.0
             reason_parts.append("Bullish divergence")
 
-        # Volatility bonus
         if volatility_state == VolatilityRegime.LOW:
             confidence += 5.0
             reason_parts.append("Low volatility")
 
-        # Calculate SL/TP
         lower_band = bb_result.lower_band.iloc[-1]
         middle_band = bb_result.middle_band.iloc[-1]
 
         entry_price = current_price
-        stop_loss = lower_band - (middle_band - lower_band) * 0.2  # 20% buffer
-        take_profit = middle_band  # Target the mean
+        stop_loss = lower_band - (middle_band - lower_band) * 0.2
+        take_profit = middle_band
 
-        # Adjust TP for better RR
         risk = abs(entry_price - stop_loss)
         if risk > 0 and (take_profit - entry_price) / risk < self.min_risk_reward:
             take_profit = entry_price + (risk * self.min_risk_reward)
@@ -120,7 +113,6 @@ class MeanReversionSignalGenerator:
         reason_parts = []
         rsi_values = {}
 
-        # RSI confirmation
         current_rsi = rsi_series.iloc[-1]
         rsi_values["primary"] = current_rsi
 
@@ -131,7 +123,6 @@ class MeanReversionSignalGenerator:
             confidence += 15.0
             reason_parts.append(f"Overbought RSI {current_rsi:.1f}")
 
-        # Bollinger Band extreme
         percent_b = bb_result.percent_b.iloc[-1]
         if percent_b > 1.0:
             confidence += 15.0
@@ -140,26 +131,22 @@ class MeanReversionSignalGenerator:
             confidence += 10.0
             reason_parts.append("Price near upper BB")
 
-        # Multi-timeframe RSI confirmation
         if mtf_data:
             mtf_overbought = self._check_mtf_overbought(mtf_data, rsi_values)
             if mtf_overbought >= 2:
                 confidence += 15.0
                 reason_parts.append(f"{mtf_overbought} TF overbought")
 
-        # RSI divergence check
         if self.divergence_detector.detect_bearish_divergence(
             df["close"], rsi_series, lookback=20
         ):
             confidence += 15.0
             reason_parts.append("Bearish divergence")
 
-        # Volatility bonus
         if volatility_state == VolatilityRegime.LOW:
             confidence += 5.0
             reason_parts.append("Low volatility")
 
-        # Calculate SL/TP
         upper_band = bb_result.upper_band.iloc[-1]
         middle_band = bb_result.middle_band.iloc[-1]
 
@@ -167,7 +154,6 @@ class MeanReversionSignalGenerator:
         stop_loss = upper_band + (upper_band - middle_band) * 0.2
         take_profit = middle_band
 
-        # Adjust TP for better RR
         risk = abs(stop_loss - entry_price)
         if risk > 0 and (entry_price - take_profit) / risk < self.min_risk_reward:
             take_profit = entry_price - (risk * self.min_risk_reward)

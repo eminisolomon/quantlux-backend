@@ -24,9 +24,9 @@ class OrderBlock:
     high_price: float
     low_price: float
     time: datetime
-    strength: float  # 0-100 quality score
-    mitigated: bool = False  # Has price returned to this zone?
-    touches: int = 0  # Number of times price touched this zone
+    strength: float
+    mitigated: bool = False
+    touches: int = 0
 
     @property
     def zone_top(self) -> float:
@@ -70,19 +70,15 @@ class OrderBlockDetector:
 
         blocks = []
 
-        # Detect bullish order blocks (last bearish before bullish impulse)
         bullish_obs = self._detect_bullish_blocks(df)
         blocks.extend(bullish_obs)
 
-        # Detect bearish order blocks (last bullish before bearish impulse)
         bearish_obs = self._detect_bearish_blocks(df)
         blocks.extend(bearish_obs)
 
-        # Sort by strength and keep only the strongest
         blocks.sort(key=lambda x: x.strength, reverse=True)
         blocks = blocks[: self.max_blocks]
 
-        # Update mitigation status
         self._update_mitigation_status(blocks, df)
 
         logger.info(f"Detected {len(blocks)} order blocks")
@@ -93,16 +89,13 @@ class OrderBlockDetector:
         blocks = []
 
         for i in range(len(df) - self.min_impulse_candles - 1):
-            # Check if current candle is bearish
             if df.iloc[i]["close"] >= df.iloc[i]["open"]:
                 continue
 
-            # Check for bullish impulse after this candle
             impulse_start = i + 1
             impulse_end = min(i + 1 + self.min_impulse_candles, len(df))
 
             if self._is_bullish_impulse(df.iloc[impulse_start:impulse_end]):
-                # This is a bullish order block
                 candle = df.iloc[i]
                 strength = self._calculate_ob_strength(df, i, MarketRegime.BULLISH)
 
@@ -124,16 +117,13 @@ class OrderBlockDetector:
         blocks = []
 
         for i in range(len(df) - self.min_impulse_candles - 1):
-            # Check if current candle is bullish
             if df.iloc[i]["close"] <= df.iloc[i]["open"]:
                 continue
 
-            # Check for bearish impulse after this candle
             impulse_start = i + 1
             impulse_end = min(i + 1 + self.min_impulse_candles, len(df))
 
             if self._is_bearish_impulse(df.iloc[impulse_start:impulse_end]):
-                # This is a bearish order block
                 candle = df.iloc[i]
                 strength = self._calculate_ob_strength(df, i, MarketRegime.BEARISH)
 
@@ -155,12 +145,10 @@ class OrderBlockDetector:
         if len(candles) < self.min_impulse_candles:
             return False
 
-        # Check if most candles are bullish
         bullish_count = (candles["close"] > candles["open"]).sum()
         if bullish_count < self.min_impulse_candles * 0.8:
             return False
 
-        # Check overall price movement
         total_move = (
             (candles.iloc[-1]["close"] - candles.iloc[0]["open"])
             / candles.iloc[0]["open"]
@@ -174,12 +162,10 @@ class OrderBlockDetector:
         if len(candles) < self.min_impulse_candles:
             return False
 
-        # Check if most candles are bearish
         bearish_count = (candles["close"] < candles["open"]).sum()
         if bearish_count < self.min_impulse_candles * 0.8:
             return False
 
-        # Check overall price movement
         total_move = (
             (candles.iloc[0]["open"] - candles.iloc[-1]["close"])
             / candles.iloc[0]["open"]
@@ -203,13 +189,11 @@ class OrderBlockDetector:
         candle = df.iloc[index]
         current_price = df.iloc[-1]["close"]
 
-        # Candle size score (0-30 points)
         candle_range = candle["high"] - candle["low"]
         avg_range = (df["high"] - df["low"]).rolling(20).mean().iloc[index]
         size_score = min(30, (candle_range / avg_range) * 15) if avg_range > 0 else 15
 
-        # Volume score (0-30 points) if available
-        volume_score = 15  # Default if no volume
+        volume_score = 15
         if "volume" in df.columns and df["volume"].iloc[index] > 0:
             avg_volume = df["volume"].rolling(20).mean().iloc[index]
             volume_score = (
@@ -218,11 +202,9 @@ class OrderBlockDetector:
                 else 15
             )
 
-        # Recency score (0-20 points) - newer is better
         bars_ago = len(df) - index - 1
         recency_score = max(0, 20 - (bars_ago / 10))
 
-        # Distance score (0-20 points) - closer to current price is better
         ob_mid = (candle["high"] + candle["low"]) / 2
         distance_pct = abs(current_price - ob_mid) / current_price * 100
         distance_score = max(0, 20 - distance_pct * 2)
@@ -235,7 +217,6 @@ class OrderBlockDetector:
         current_price = df.iloc[-1]["close"]
 
         for ob in blocks:
-            # Check if price has touched this zone
             if ob.is_price_in_zone(current_price):
                 ob.touches += 1
                 ob.mitigated = True
@@ -258,7 +239,6 @@ class OrderBlockDetector:
         if not filtered_obs:
             return None
 
-        # Find nearest by mid-point distance
         nearest = min(filtered_obs, key=lambda ob: abs(current_price - ob.zone_mid))
 
         return nearest

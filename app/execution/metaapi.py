@@ -1,6 +1,6 @@
 """MetaApi Execution operations."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.execution.broker import AbstractBroker
 from app.metaapi.connection import (
@@ -19,7 +19,7 @@ class MetaApiBroker(AbstractBroker):
     def _build_order_options(comment: str, symbol: str, order_type: str) -> dict:
         return {
             "comment": comment or f"{order_type} {symbol}",
-            "clientId": f"{order_type.lower()}_{symbol}_{datetime.now().timestamp()}",
+            "clientId": f"{order_type.lower()}_{symbol}_{datetime.now(timezone.utc).timestamp()}",
         }
 
     async def _execute_safe(

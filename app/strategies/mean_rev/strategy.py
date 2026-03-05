@@ -36,7 +36,6 @@ class EnhancedMeanReversionStrategy:
         self.timeframe = timeframe
         self.min_confidence = min_confidence
 
-        # Initialize indicators
         self.bb_calculator = AdaptiveBollingerBands(
             period=bb_period, std_dev=bb_std_dev, adaptive=True
         )
@@ -51,7 +50,6 @@ class EnhancedMeanReversionStrategy:
         self.mtf_rsi = MultiTimeframeRSI(rsi_config)
         self.divergence_detector = RSIDivergence()
 
-        # Initialize signal generator
         self.generator = MeanReversionSignalGenerator(
             rsi_calculator=self.rsi_calculator,
             divergence_detector=self.divergence_detector,
@@ -67,27 +65,22 @@ class EnhancedMeanReversionStrategy:
             logger.warning("Not enough data for mean reversion analysis")
             return None
 
-        # Calculate indicators
         bb_result = self.bb_calculator.calculate(df)
         rsi_series = self.rsi_calculator.calculate(df["close"])
 
         if rsi_series.empty:
             return None
 
-        # Check volatility regime
         volatility_state = self._classify_volatility_regime(bb_result)
 
-        # Only trade in low-medium volatility
         if volatility_state == VolatilityRegime.HIGH:
             logger.info("Volatility too high for mean reversion")
             return None
 
-        # Check for setup
         current_price = df.iloc[-1]["close"]
         current_rsi = rsi_series.iloc[-1]
         bb_position = bb_result.get_current_position(current_price)
 
-        # Check for oversold (potential buy)
         if (
             bb_position in ["BELOW_LOWER", "NEAR_LOWER"]
             and current_rsi < self.rsi_calculator.config.oversold
@@ -98,7 +91,6 @@ class EnhancedMeanReversionStrategy:
             if signal:
                 return signal
 
-        # Check for overbought (potential sell)
         elif (
             bb_position in ["ABOVE_UPPER", "NEAR_UPPER"]
             and current_rsi > self.rsi_calculator.config.overbought

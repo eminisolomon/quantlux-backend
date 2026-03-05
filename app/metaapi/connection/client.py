@@ -29,29 +29,22 @@ class MetaApiConnection:
     async def initialize(cls) -> bool:
         """Initialize connection to MetaApi cloud."""
         try:
-            # Validate settings
             if not cls._validate_settings():
                 return False
 
-            # Initialize API
             if not await cls._init_api():
                 return False
 
-            # Setup account
             if not await cls._setup_account():
                 return False
 
-            # Create connection
             if not await cls._create_connection():
                 return False
 
-            # Setup connection manager
             cls._setup_connection_manager()
 
-            # Initialize rate limiter
             cls._rate_limiter = RateLimiter(calls_per_second=10.0)
 
-            # Setup health monitor
             await cls._setup_health_monitor()
 
             cls._is_connected = True
@@ -93,18 +86,15 @@ class MetaApiConnection:
     async def _setup_account(cls) -> bool:
         """Setup and deploy account."""
         try:
-            # Get account
             logger.info(f"Fetching account {settings.METAAPI_ACCOUNT_ID}...")
             cls._account = await cls._api.metatrader_account_api.get_account(
                 settings.METAAPI_ACCOUNT_ID
             )
 
-            # Deploy if needed
             if cls._account.state != "DEPLOYED":
                 logger.warning(f"Account state is {cls._account.state}, deploying...")
                 await cls._account.deploy()
 
-            # Wait for deployment
             logger.info("Waiting for account deployment...")
             await cls._account.wait_deployed()
 
@@ -117,15 +107,12 @@ class MetaApiConnection:
     async def _create_connection(cls) -> bool:
         """Create and connect streaming connection."""
         try:
-            # Create connection
             logger.info("Creating streaming connection...")
             cls._connection = cls._account.get_streaming_connection()
 
-            # Connect to terminal
             logger.info("Connecting to MetaTrader terminal...")
             await cls._connection.connect()
 
-            # Wait for synchronization
             logger.info("Waiting for terminal synchronization...")
             await cls._connection.wait_synchronized()
 
@@ -159,11 +146,9 @@ class MetaApiConnection:
     @classmethod
     async def ensure_connected(cls) -> bool:
         """Ensure connection is active, reconnect if needed."""
-        # Use connection manager if available
         if cls._connection_manager:
             return await cls._connection_manager.ensure_connected()
 
-        # Fallback to manual check
         if cls._is_connected and cls._connection:
             try:
                 if cls._connection.is_synchronized:
@@ -187,16 +172,13 @@ class MetaApiConnection:
     async def shutdown(cls) -> None:
         """Shutdown MetaApi connection."""
         try:
-            # Close connection manager if exists
             if cls._connection_manager:
                 await cls._connection_manager.close()
 
-            # Close connection
             if cls._connection:
                 logger.info("Closing MetaApi connection...")
                 await cls._connection.close()
 
-            # Close health monitor
             if cls._health_monitor:
                 await cls._health_monitor.stop_monitoring()
 
@@ -262,14 +244,12 @@ class MetaApiConnection:
     def get_rate_limiter(cls) -> RateLimiter:
         """Get the rate limiter instance."""
         if not cls._rate_limiter:
-            # Lazy init if not initialized (though initialize() should be called)
             cls._rate_limiter = RateLimiter(calls_per_second=10.0)
         return cls._rate_limiter
 
     @classmethod
     def get_latency_monitor(cls):
         """Get the latency monitor instance."""
-        # Avoid circular import by importing locally or ensure import at top
         from app.metaapi.connection.latency import LatencyMonitor
 
         if not hasattr(cls, "_latency_monitor") or not cls._latency_monitor:
@@ -277,7 +257,6 @@ class MetaApiConnection:
         return cls._latency_monitor
 
 
-# Synchronous wrapper for initialization
 def initialize_metaapi() -> bool:
     """Synchronous wrapper for MetaApi initialization."""
     return asyncio.run(MetaApiConnection.initialize())

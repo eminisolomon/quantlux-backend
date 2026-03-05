@@ -3,7 +3,6 @@ from app.core.symbols import SymbolManager
 
 def test_symbol_manager_initialization():
     manager = SymbolManager()
-    # Should load from config/settings.yaml (which has EURUSD and GBPUSD by default)
     enabled_symbols = manager.get_enabled_symbols()
     assert "EURUSD" in enabled_symbols
     assert "GBPUSD" in enabled_symbols
@@ -29,7 +28,6 @@ def test_is_symbol_enabled():
 
 def test_get_max_positions():
     manager = SymbolManager()
-    # EURUSD should have a max_positions value
     max_pos = manager.get_max_positions("EURUSD")
     assert isinstance(max_pos, int)
     assert max_pos >= 1

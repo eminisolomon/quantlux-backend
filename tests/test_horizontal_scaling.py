@@ -25,21 +25,17 @@ async def mock_redis(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_order_queue_redis_push_pop(mock_redis):
-    # Set up queue pointing to fake redis
     queue = OrderQueue()
     queue.queue_key = "test:queue"
 
-    # Enqueue a task
     task = OrderTask(
         action=SignalAction.BUY, symbol="EURUSD", volume=1.0, comment="Test Trade"
     )
     await queue.enqueue_order(task)
 
-    # Assert it was written to redis
     length = await mock_redis.llen(queue.queue_key)
     assert length == 1
 
-    # Assert we can pop it
     result = await mock_redis.blpop(queue.queue_key, timeout=1)
     assert result is not None
     _, data = result
@@ -54,18 +50,14 @@ async def test_drawdown_manager_sync(mock_redis):
     dm1 = DrawdownManager(account_id="test_account")
     dm2 = DrawdownManager(account_id="test_account")
 
-    # Init first instance
     await dm1.initialize(10000.0)
 
-    # Change peak in first instance
     state = await dm1._get_state()
     state["peak_equity"] = 10500.0
     await dm1._save_state(state)
 
-    # Check if second instance sees it
     await dm2.initialize(10000.0)
 
-    # The peak equity should be synchronized
     state2 = await dm2._get_state()
     assert state2["peak_equity"] == 10500.0
 
@@ -88,7 +80,6 @@ async def test_analytics_tracker_redis():
 
     await tracker1.add_trade(trade)
 
-    # Initialize tracker 2 and it should load the trade directly
     await tracker2.initialize()
 
     assert len(tracker2.trades) == 1

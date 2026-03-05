@@ -14,7 +14,7 @@ class QuantLuxStrategy(bt.Strategy):
         ("rsi_overbought", 70),
         ("stop_loss_pct", 2.0),
         ("take_profit_pct", 4.0),
-        ("position_size", 0.01),  # Lot size
+        ("position_size", 0.01),
     )
 
     def __init__(self):
@@ -89,7 +89,6 @@ class QuantLuxStrategy(bt.Strategy):
 
     def _handle_exit(self, rsi_value: float, price: float):
         """Handle exit logic for open positions."""
-        # Check for Strategy Exit Signal
         if rsi_value > self.params.rsi_overbought:
             self.order = self.sell(size=self.position.size)
             logger.debug(f"SELL SIGNAL: RSI={rsi_value:.2f}")
@@ -98,7 +97,6 @@ class QuantLuxStrategy(bt.Strategy):
         if not self.buy_price:
             return
 
-        # Check for Risk Management Exits
         if self._is_stop_loss_hit(price):
             self.order = self.sell(size=self.position.size)
             loss_pct = ((self.buy_price - price) / self.buy_price) * 100

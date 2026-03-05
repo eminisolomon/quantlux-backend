@@ -22,7 +22,6 @@ def configure_logger() -> None:
     )
 
     if settings.LOG_TO_FILE:
-        # General application log
         logger.add(
             "logs/app.log",
             rotation="500 MB",
@@ -30,7 +29,6 @@ def configure_logger() -> None:
             level=log_level,
             format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
         )
-        # Separate Error log
         logger.add(
             "logs/error.log",
             rotation="100 MB",
@@ -38,7 +36,6 @@ def configure_logger() -> None:
             level="ERROR",
             format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
         )
-        # Dedicated Trade History log
         logger.add(
             "logs/trade_history.log",
             rotation="100 MB",

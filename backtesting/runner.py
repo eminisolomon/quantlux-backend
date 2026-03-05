@@ -25,7 +25,6 @@ class BacktestEngine:
         """Run backtest on historical data."""
         logger.info(f"Starting backtest with ${self.initial_cash:.2f} initial cash")
 
-        # Configure Cerebro
         self.cerebro = bt.Cerebro()
 
         strat_cls = strategy_class if strategy_class else QuantLuxStrategy
@@ -42,13 +41,11 @@ class BacktestEngine:
         self.cerebro.broker.setcommission(commission=commission)
         self.cerebro.broker.set_slippage_perc(slippage_perc)
 
-        # Add analyzers
         self.cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name="sharpe")
         self.cerebro.addanalyzer(bt.analyzers.DrawDown, _name="drawdown")
         self.cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="trades")
         self.cerebro.addanalyzer(bt.analyzers.Returns, _name="returns")
 
-        # Run backtest
         logger.info("Running backtest...")
         starting_value = self.cerebro.broker.getvalue()
 
@@ -56,15 +53,12 @@ class BacktestEngine:
 
         final_value = self.cerebro.broker.getvalue()
 
-        # Extract results
         strat = results[0]
 
-        # Parse analyzer results
         sharpe = strat.analyzers.sharpe.get_analysis().get("sharperatio", None)
         drawdown = strat.analyzers.drawdown.get_analysis()
         trades = strat.analyzers.trades.get_analysis()
 
-        # Calculate metrics
         net_profit = final_value - starting_value
         roi = (net_profit / starting_value) * 100
 
@@ -74,7 +68,6 @@ class BacktestEngine:
 
         win_rate = (won_trades / total_trades * 100) if total_trades > 0 else 0
 
-        # Profit factor
         gross_profit = trades.get("won", {}).get("pnl", {}).get("total", 0)
         gross_loss = abs(trades.get("lost", {}).get("pnl", {}).get("total", 0))
         profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else 0

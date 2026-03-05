@@ -26,7 +26,6 @@ class ActiveTradeManager:
         self.is_running = False
         self._task = None
 
-        # Configuration per trade or global
         self.enable_trailing_stop = True
         self.trailing_stop_pips = 20.0
 
@@ -59,7 +58,7 @@ class ActiveTradeManager:
                 await self.manage_open_trades()
             except Exception as e:
                 logger.error(f"Error in ActiveTradeManager loop: {e}")
-            await asyncio.sleep(60)  # Check every minute
+            await asyncio.sleep(60)
 
     async def manage_open_trades(self) -> None:
         """Fetch and process all bot-managed open positions."""

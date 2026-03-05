@@ -50,17 +50,14 @@ class ConnectionManager:
                     f"Attempting MetaApi WebSocket reconnection (attempt {attempt})..."
                 )
 
-                # Connect and wait for synchronization
                 if not self.connection.is_connected():
                     await self.connection.connect()
 
-                # Wait for terminal state to synchronize
                 await self.connection.wait_synchronized()
 
                 self.is_connected = True
                 logger.info("✅ MetaApi WebSocket reconnected successfully")
 
-                # Call reconnection callbacks
                 await self._trigger_reconnect_callbacks()
 
                 return True
@@ -85,7 +82,6 @@ class ConnectionManager:
             self.is_connected = False
             logger.warning("⚠️  MetaApi WebSocket disconnected")
 
-            # Start reconnection task if not already running
             if not self.reconnect_task or self.reconnect_task.done():
                 self.reconnect_task = asyncio.create_task(self.reconnect())
 

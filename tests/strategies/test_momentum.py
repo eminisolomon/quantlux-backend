@@ -21,19 +21,15 @@ def momentum_strategy():
 
 @pytest.fixture
 def sample_data_bullish():
-    # 30 periods of data
     np.random.seed(42)
     dates = pd.date_range("2023-01-01", periods=30, freq="h")
 
-    # Generate prices inside a channel
     highs = np.random.uniform(1.0500, 1.0600, 30)
     lows = np.random.uniform(1.0400, 1.0500, 30)
     closes = np.random.uniform(1.0450, 1.0550, 30)
     volumes = np.random.randint(100, 1000, 30)
 
-    # Create the breakout at the very end
-    # previous high would be max ~1.0600
-    closes[-1] = 1.0650  # Bullish breakout
+    closes[-1] = 1.0650
     highs[-1] = 1.0660
 
     df = pd.DataFrame(
@@ -50,19 +46,15 @@ def sample_data_bullish():
 
 @pytest.fixture
 def sample_data_bearish():
-    # 30 periods of data
     np.random.seed(42)
     dates = pd.date_range("2023-01-01", periods=30, freq="h")
 
-    # Generate prices inside a channel
     highs = np.random.uniform(1.0500, 1.0600, 30)
     lows = np.random.uniform(1.0400, 1.0500, 30)
     closes = np.random.uniform(1.0450, 1.0550, 30)
     volumes = np.random.randint(100, 1000, 30)
 
-    # Create the breakout at the very end
-    # previous low would be min ~1.0400
-    closes[-1] = 1.0350  # Bearish breakout
+    closes[-1] = 1.0350
     lows[-1] = 1.0340
 
     df = pd.DataFrame(
@@ -96,7 +88,6 @@ def test_momentum_strategy_bearish_breakout(momentum_strategy, sample_data_beari
 
 
 def test_momentum_strategy_no_breakout(momentum_strategy, sample_data_bullish):
-    # remove breakout
     sample_data_bullish.loc[sample_data_bullish.index[-1], "close"] = 1.0550
     signal = momentum_strategy.analyze(sample_data_bullish)
     assert signal is None

@@ -29,7 +29,7 @@ def test_calculate_atr_series():
     assert len(series) == 5
     assert pd.isna(series.iloc[0])
     assert pd.isna(series.iloc[1])
-    assert pd.isna(series.iloc[2])  # indices 0,1,2 < period (3)
+    assert pd.isna(series.iloc[2])
     assert series.iloc[3] == 5.0
     assert series.iloc[4] == 5.0
 

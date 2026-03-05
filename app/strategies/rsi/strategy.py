@@ -48,7 +48,6 @@ class RSIStrategy(FilterMixin):
         self.volatility_ma_period = volatility_ma_period
         self.volume_ma_period = volume_ma_period
 
-        # Initialize Indicators
         self.config = RSIConfig(
             period=rsi_period, oversold=oversold, overbought=overbought
         )
@@ -64,12 +63,10 @@ class RSIStrategy(FilterMixin):
         if len(df) < 50:
             return None
 
-        # Calculate RSI
         rsi_series = self.rsi_calculator.calculate(df["close"])
         if rsi_series.empty:
             return None
 
-        # Base Filters (Volatility & Volume)
         if not self._check_volatility(df):
             return None
         if not self._check_volume(df):
@@ -78,11 +75,8 @@ class RSIStrategy(FilterMixin):
         current_price = df.iloc[-1]["close"]
         current_rsi = rsi_series.iloc[-1]
 
-        # 1. Determine Regime
         regime = self.analyzer.classify_regime(rsi_series)
 
-        # 2. Check Patterns
-        # Bullish Signals
         if regime in [MarketRegime.BULLISH, MarketRegime.NEUTRAL]:
             signal = self._check_bullish_setup(
                 df, rsi_series, current_price, current_rsi, regime, mtf_data
@@ -90,7 +84,6 @@ class RSIStrategy(FilterMixin):
             if signal and signal.confidence >= self.min_confidence:
                 return signal
 
-        # Bearish Signals
         if regime in [MarketRegime.BEARISH, MarketRegime.NEUTRAL]:
             signal = self._check_bearish_setup(
                 df, rsi_series, current_price, current_rsi, regime, mtf_data
@@ -114,29 +107,24 @@ class RSIStrategy(FilterMixin):
         reasons = []
         pattern = RSIPattern.OVERSOLD
 
-        # Pattern 1: Failure Swing (High Confidence)
         if self.analyzer.detect_failure_swing_bottom(rsi_series):
             confidence += 25.0
             reasons.append("Bullish Failure Swing")
             pattern = RSIPattern.FAILURE_SWING
 
-        # Pattern 2: Divergence (Medium Confidence)
         if self.divergence_detector.detect_bullish_divergence(df["close"], rsi_series):
             confidence += 20.0
             reasons.append("Bullish Divergence")
             pattern = RSIPattern.DIVERGENCE
 
-        # Pattern 3: Simple Oversold (Low Confidence, context dependent)
         if rsi < self.config.oversold:
             confidence += 10.0
             reasons.append(f"Oversold ({rsi:.1f})")
 
-            # In strong bullish regime, oversold is very significant
             if regime == MarketRegime.BULLISH:
                 confidence += 10.0
                 reasons.append("Bullish Regime Dip")
 
-        # Multi-Timeframe Confirmation
         if mtf_data:
             mtf_score = self._check_mtf_confluence(mtf_data, SignalAction.BUY)
             if mtf_score > 0:
@@ -146,12 +134,10 @@ class RSIStrategy(FilterMixin):
         if confidence < self.min_confidence:
             return None
 
-        # Risk Management
         atr = self._calculate_atr(df)
         stop_loss = price - (atr * 2.0)
         take_profit = price + (atr * 4.0)
 
-        # Risk Reward Check
         risk = price - stop_loss
         if risk > 0:
             rr = (take_profit - price) / risk
@@ -187,29 +173,24 @@ class RSIStrategy(FilterMixin):
         reasons = []
         pattern = RSIPattern.OVERBOUGHT
 
-        # Pattern 1: Failure Swing (High Confidence)
         if self.analyzer.detect_failure_swing_top(rsi_series):
             confidence += 25.0
             reasons.append("Bearish Failure Swing")
             pattern = RSIPattern.FAILURE_SWING
 
-        # Pattern 2: Divergence (Medium Confidence)
         if self.divergence_detector.detect_bearish_divergence(df["close"], rsi_series):
             confidence += 20.0
             reasons.append("Bearish Divergence")
             pattern = RSIPattern.DIVERGENCE
 
-        # Pattern 3: Simple Overbought
         if rsi > self.config.overbought:
             confidence += 10.0
             reasons.append(f"Overbought ({rsi:.1f})")
 
-            # In strong bearish regime, overbought is significant
             if regime == MarketRegime.BEARISH:
                 confidence += 10.0
                 reasons.append("Bearish Regime Rally")
 
-        # MTF Confirmation
         if mtf_data:
             mtf_score = self._check_mtf_confluence(mtf_data, SignalAction.SELL)
             if mtf_score > 0:
@@ -219,7 +200,6 @@ class RSIStrategy(FilterMixin):
         if confidence < self.min_confidence:
             return None
 
-        # Risk Management
         atr = self._calculate_atr(df)
         stop_loss = price + (atr * 2.0)
         take_profit = price - (atr * 4.0)
@@ -258,11 +238,9 @@ class RSIStrategy(FilterMixin):
             last_rsi = rsi.iloc[-1]
 
             if action == SignalAction.BUY:
-                # Higher TF bullish if not overbought and rising, or oversold
                 if last_rsi < 30 or (40 < last_rsi < 70 and is_rising(rsi)):
                     score += 1
             else:
-                # Higher TF bearish if not oversold and falling, or overbought
                 if last_rsi > 70 or (30 < last_rsi < 60 and is_falling(rsi)):
                     score += 1
 

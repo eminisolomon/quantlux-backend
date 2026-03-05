@@ -42,7 +42,6 @@ class FairValueGap:
     def update_fill_status(self, high: float, low: float):
         """Update how much of the gap has been filled."""
         if self.type == MarketRegime.BULLISH:
-            # Bullish FVG expects price to come down into it
             if low <= self.mid:
                 self.filled = True
                 if low <= self.bottom:
@@ -50,7 +49,6 @@ class FairValueGap:
                 else:
                     self.fill_percentage = ((self.top - low) / self.size) * 100
         else:
-            # Bearish FVG expects price to come up into it
             if high >= self.mid:
                 self.filled = True
                 if high >= self.top:
@@ -73,23 +71,19 @@ class FairValueGapDetector:
 
         fvgs = []
 
-        # Scan through data looking for 3-candle patterns
         for i in range(len(df) - 2):
             candle1 = df.iloc[i]
             candle2 = df.iloc[i + 1]
             candle3 = df.iloc[i + 2]
 
-            # Check for bullish FVG
             bullish_fvg = self._detect_bullish_fvg(candle1, candle2, candle3)
             if bullish_fvg:
                 fvgs.append(bullish_fvg)
 
-            # Check for bearish FVG
             bearish_fvg = self._detect_bearish_fvg(candle1, candle2, candle3)
             if bearish_fvg:
                 fvgs.append(bearish_fvg)
 
-        # Update fill status for all FVGs
         if fvgs:
             self._update_fvg_fill_status(fvgs, df)
 
@@ -105,14 +99,12 @@ class FairValueGapDetector:
         gap_bottom = c1["high"]
         gap_top = c3["low"]
 
-        # Check if there's a gap
         if gap_top <= gap_bottom:
             return None
 
         gap_size = gap_top - gap_bottom
 
-        # Check minimum size
-        if gap_size < (self.min_gap_size_pips * 0.0001):  # Convert pips to price
+        if gap_size < (self.min_gap_size_pips * 0.0001):
             return None
 
         return FairValueGap(
@@ -131,13 +123,11 @@ class FairValueGapDetector:
         gap_top = c1["low"]
         gap_bottom = c3["high"]
 
-        # Check if there's a gap
         if gap_bottom >= gap_top:
             return None
 
         gap_size = gap_top - gap_bottom
 
-        # Check minimum size
         if gap_size < (self.min_gap_size_pips * 0.0001):
             return None
 
@@ -151,7 +141,6 @@ class FairValueGapDetector:
     def _update_fvg_fill_status(self, fvgs: list[FairValueGap], df: pd.DataFrame):
         """Update which FVGs have been filled."""
         for fvg in fvgs:
-            # Check all candles after the FVG formation
             fvg_index = (
                 df[df["time"] == fvg.time].index[0]
                 if "time" in df.columns

@@ -56,14 +56,11 @@ class MomentumStrategy(FilterMixin):
             )
             return None
 
-        # Base Filters (Volatility & Volume)
         if not self._check_volatility(df):
             return None
         if not self._check_volume(df):
             return None
 
-        # Donchian Channels
-        # Upper channel is highest high of past N periods (excluding current bar)
         df["upper_channel"] = (
             df["high"].rolling(window=self.channel_period).max().shift(1)
         )
@@ -80,7 +77,6 @@ class MomentumStrategy(FilterMixin):
         if pd.isna(prev_upper) or pd.isna(prev_lower):
             return None
 
-        # Bullish Breakout
         if current_close > prev_upper:
             stop_loss = current_close - (atr * 2.0)
             take_profit = current_close + (atr * 4.0)
@@ -104,7 +100,6 @@ class MomentumStrategy(FilterMixin):
                 risk_reward_ratio=rr,
             )
 
-        # Bearish Breakout
         if current_close < prev_lower:
             stop_loss = current_close + (atr * 2.0)
             take_profit = current_close - (atr * 4.0)

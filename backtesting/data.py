@@ -1,6 +1,6 @@
 """Data utilities for backtesting."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
@@ -27,14 +27,13 @@ def load_sample_data(
     logger.info(f"Generating sample data for {symbol}")
 
     if not start:
-        start = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+        start = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%d")
     if not end:
-        end = datetime.now().strftime("%Y-%m-%d")
+        end = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     dates = pd.date_range(start=start, end=end, freq="h")
     n = len(dates)
 
-    # Generate random walk data
     close_prices = 1.1000 + np.cumsum(np.random.normal(0, 0.001, n))
     high_prices = close_prices + np.random.uniform(0, 0.002, n)
     low_prices = close_prices - np.random.uniform(0, 0.002, n)

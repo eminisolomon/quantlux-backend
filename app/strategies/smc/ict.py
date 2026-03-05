@@ -36,7 +36,6 @@ class SmartMoneyStrategy(FilterMixin):
         self.volatility_ma_period = volatility_ma_period
         self.volume_ma_period = volume_ma_period
 
-        # Initialize detectors
         self.ob_detector = OrderBlockDetector(
             min_impulse_candles=3, impulse_strength_threshold=0.5, max_blocks=10
         )
@@ -49,13 +48,11 @@ class SmartMoneyStrategy(FilterMixin):
             logger.warning("Not enough data for ICT analysis")
             return None
 
-        # Base Filters (Volatility & Volume)
         if not self._check_volatility(df):
             return None
         if not self._check_volume(df):
             return None
 
-        # Analyze market structure
         swings, structure_breaks = self.structure_analyzer.analyze_structure(df)
         current_trend = self.structure_analyzer.get_current_trend(structure_breaks)
 
@@ -63,15 +60,12 @@ class SmartMoneyStrategy(FilterMixin):
             logger.info("No clear trend identified")
             return None
 
-        # Detect order blocks and FVGs
         blocks = self.ob_detector.detect_blocks(df)
         fvgs = self.fvg_detector.detect_fvg(df)
 
-        # Get active (unmitigated) zones
         active_obs = self.ob_detector.get_active_blocks(blocks)
         active_fvgs = self.fvg_detector.get_unfilled_fvgs(fvgs)
 
-        # Look for entry setup
         current_price = df.iloc[-1]["close"]
 
         if current_trend == MarketRegime.BULLISH:
@@ -85,7 +79,6 @@ class SmartMoneyStrategy(FilterMixin):
         else:
             return None
 
-        # Validate signal
         if signal and signal.confidence >= self.min_confidence:
             if signal.risk_reward_ratio >= self.min_risk_reward:
                 logger.success(
@@ -105,31 +98,26 @@ class SmartMoneyStrategy(FilterMixin):
     ) -> ICTSignal | None:
         """Check for bullish entry setup."""
 
-        # Filter for bullish order blocks below current price
         bullish_obs = [
             ob
             for ob in blocks
             if ob.type == MarketRegime.BULLISH and ob.zone_top < current_price
         ]
 
-        # Filter for bullish FVGs below current price
         bullish_fvgs = [
             fvg
             for fvg in fvgs
             if fvg.type == MarketRegime.BULLISH and fvg.top < current_price
         ]
 
-        # Find nearest bullish OB
         nearest_ob = self.ob_detector.get_nearest_order_block(
             bullish_obs, current_price, MarketRegime.BULLISH
         )
 
-        # Find nearest bullish FVG
         nearest_fvg = min(
             bullish_fvgs, key=lambda x: abs(current_price - x.mid), default=None
         )
 
-        # Check if price is near an OB or FVG
         entry_zone = None
         confidence = 50.0
         reason_parts = []
@@ -139,18 +127,18 @@ class SmartMoneyStrategy(FilterMixin):
                 (current_price - nearest_ob.zone_mid) / current_price
             ) * 100
 
-            if distance_to_ob < 1.0:  # Within 1% of OB
+            if distance_to_ob < 1.0:
                 entry_zone = nearest_ob
-                confidence += 25.0  # OB touch
-                confidence += min(nearest_ob.strength / 4, 15.0)  # OB strength bonus
+                confidence += 25.0
+                confidence += min(nearest_ob.strength / 4, 15.0)
                 reason_parts.append(f"Bullish OB at {nearest_ob.zone_mid:.5f}")
 
         if nearest_fvg:
             distance_to_fvg = ((current_price - nearest_fvg.mid) / current_price) * 100
 
-            if distance_to_fvg < 0.5:  # Within 0.5% of FVG
+            if distance_to_fvg < 0.5:
                 if entry_zone:
-                    confidence += 10.0  # OB + FVG confluence
+                    confidence += 10.0
                     reason_parts.append("+ FVG confluence")
                 else:
                     entry_zone = nearest_fvg
@@ -160,18 +148,16 @@ class SmartMoneyStrategy(FilterMixin):
         if not entry_zone:
             return None
 
-        # Check for recent BOS (bullish continuation)
         recent_bos = self.structure_analyzer.get_recent_bos(structure_breaks)
         if recent_bos and recent_bos.direction == MarketRegime.BULLISH:
             confidence += 10.0
             reason_parts.append("BOS confirmation")
 
-        # Calculate entry, SL, TP
         if isinstance(entry_zone, OrderBlock):
             entry_price = entry_zone.zone_mid
-            stop_loss = entry_zone.zone_bottom - (entry_zone.size * 0.1)  # 10% buffer
-            take_profit = entry_price + (abs(entry_price - stop_loss) * 2.5)  # 2.5:1 RR
-        else:  # FVG
+            stop_loss = entry_zone.zone_bottom - (entry_zone.size * 0.1)
+            take_profit = entry_price + (abs(entry_price - stop_loss) * 2.5)
+        else:
             entry_price = entry_zone.mid
             stop_loss = entry_zone.bottom - (entry_zone.size * 0.1)
             take_profit = entry_price + (abs(entry_price - stop_loss) * 2.5)
@@ -199,31 +185,26 @@ class SmartMoneyStrategy(FilterMixin):
     ) -> ICTSignal | None:
         """Check for bearish entry setup."""
 
-        # Filter for bearish order blocks above current price
         bearish_obs = [
             ob
             for ob in blocks
             if ob.type == MarketRegime.BEARISH and ob.zone_bottom > current_price
         ]
 
-        # Filter for bearish FVGs above current price
         bearish_fvgs = [
             fvg
             for fvg in fvgs
             if fvg.type == MarketRegime.BEARISH and fvg.bottom > current_price
         ]
 
-        # Find nearest bearish OB
         nearest_ob = self.ob_detector.get_nearest_order_block(
             bearish_obs, current_price, MarketRegime.BEARISH
         )
 
-        # Find nearest bearish FVG
         nearest_fvg = min(
             bearish_fvgs, key=lambda x: abs(current_price - x.mid), default=None
         )
 
-        # Check if price is near an OB or FVG
         entry_zone = None
         confidence = 50.0
         reason_parts = []
@@ -233,7 +214,7 @@ class SmartMoneyStrategy(FilterMixin):
                 (nearest_ob.zone_mid - current_price) / current_price
             ) * 100
 
-            if distance_to_ob < 1.0:  # Within 1% of OB
+            if distance_to_ob < 1.0:
                 entry_zone = nearest_ob
                 confidence += 25.0
                 confidence += min(nearest_ob.strength / 4, 15.0)
@@ -254,18 +235,16 @@ class SmartMoneyStrategy(FilterMixin):
         if not entry_zone:
             return None
 
-        # Check for recent BOS (bearish continuation)
         recent_bos = self.structure_analyzer.get_recent_bos(structure_breaks)
         if recent_bos and recent_bos.direction == MarketRegime.BEARISH:
             confidence += 10.0
             reason_parts.append("BOS confirmation")
 
-        # Calculate entry, SL, TP
         if isinstance(entry_zone, OrderBlock):
             entry_price = entry_zone.zone_mid
             stop_loss = entry_zone.zone_top + (entry_zone.size * 0.1)
             take_profit = entry_price - (abs(stop_loss - entry_price) * 2.5)
-        else:  # FVG
+        else:
             entry_price = entry_zone.mid
             stop_loss = entry_zone.top + (entry_zone.size * 0.1)
             take_profit = entry_price - (abs(stop_loss - entry_price) * 2.5)

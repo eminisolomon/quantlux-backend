@@ -12,7 +12,7 @@ class LatencyMonitor:
         """Initialize with alert threshold in milliseconds."""
         self.alert_threshold_ms = alert_threshold_ms
         self.latencies: dict[str, list[float]] = {}
-        self._max_samples = 1000  # Limit memory usage
+        self._max_samples = 1000
 
     def measure(self, operation: str):
         """Context manager to measure operation latency."""
@@ -23,14 +23,11 @@ class LatencyMonitor:
         if operation not in self.latencies:
             self.latencies[operation] = []
 
-        # Add measurement
         self.latencies[operation].append(latency_ms)
 
-        # Limit samples to prevent memory growth
         if len(self.latencies[operation]) > self._max_samples:
             self.latencies[operation] = self.latencies[operation][-self._max_samples :]
 
-        # Alert if exceeds threshold
         if latency_ms > self.alert_threshold_ms:
             logger.warning(
                 f"⚠️  HIGH LATENCY: {operation} took {latency_ms:.2f}ms "
@@ -47,7 +44,6 @@ class LatencyMonitor:
         latencies = sorted(self.latencies[operation])
         count = len(latencies)
 
-        # Calculate percentiles
         p95_idx = int(count * 0.95)
         p99_idx = int(count * 0.99)
 

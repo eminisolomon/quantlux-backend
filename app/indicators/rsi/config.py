@@ -12,4 +12,4 @@ class RSIConfig(BaseModel):
     overbought: float = 70.0
     oversold: float = 30.0
     smoothing: RSISmoothing = RSISmoothing.WILDER
-    adaptive: bool = False  # Enable adaptive period based on volatility
+    adaptive: bool = False

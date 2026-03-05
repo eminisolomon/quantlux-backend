@@ -24,7 +24,6 @@ class DIContainer:
         return self._services[service_type]
 
 
-# Global container instance
 container = DIContainer()
 
 
@@ -38,11 +37,9 @@ def init_container(metaapi_adapter: MetaApiAdapter) -> None:
 
     container.register(MetaApiAdapter, metaapi_adapter)
 
-    # Register Services
     account_service = AccountService(metaapi_adapter)
     container.register(AccountService, account_service)
 
-    # Initialize Managers for Injection
     drawdown_manager = DrawdownManager(
         max_daily_dd_pct=settings.MAX_DAILY_DRAWDOWN_PCT,
         max_total_dd_pct=settings.MAX_TOTAL_DRAWDOWN_PCT,

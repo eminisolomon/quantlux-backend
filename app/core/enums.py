@@ -69,7 +69,6 @@ class Timeframe(IntEnum):
     MN1 = 43200
 
 
-# MetaApi timeframe strings
 TIMEFRAME_STRINGS = {
     Timeframe.M1: "1m",
     Timeframe.M5: "5m",

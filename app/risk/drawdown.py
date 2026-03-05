@@ -1,7 +1,7 @@
 """Drawdown protection: daily/total limits, auto-halt on breach."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.utils.logger import logger
 from app.core.redis_client import redis_client
@@ -12,7 +12,7 @@ class DrawdownManager:
         self,
         max_daily_dd_pct: float = 5.0,
         max_total_dd_pct: float = 15.0,
-        warning_threshold_pct: float = 75.0,  # % of limit before warning
+        warning_threshold_pct: float = 75.0,
         account_id: str = "default",
     ):
         self.max_daily_dd = max_daily_dd_pct
@@ -36,7 +36,7 @@ class DrawdownManager:
             "peak_equity": 0.0,
             "is_halted": False,
             "halt_reason": "",
-            "last_reset_date": datetime.now().date().isoformat(),
+            "last_reset_date": datetime.now(timezone.utc).date().isoformat(),
         }
 
     async def _save_state(self, state: dict):
@@ -60,7 +60,7 @@ class DrawdownManager:
     async def reset_daily(self, current_equity: float):
         state = await self._get_state()
         state["daily_start_equity"] = current_equity
-        state["last_reset_date"] = datetime.now().date().isoformat()
+        state["last_reset_date"] = datetime.now(timezone.utc).date().isoformat()
         await self._save_state(state)
         logger.debug(f"Daily drawdown reset. Starting equity: ${current_equity:.2f}")
 
@@ -74,7 +74,7 @@ class DrawdownManager:
 
     async def check_drawdown_limits(self, current_equity: float) -> dict:
         state = await self._get_state()
-        current_date = datetime.now().date()
+        current_date = datetime.now(timezone.utc).date()
         last_reset_date = datetime.fromisoformat(state["last_reset_date"]).date()
 
         if current_date > last_reset_date:
@@ -85,7 +85,6 @@ class DrawdownManager:
                 f"Daily drawdown reset. Starting equity: ${current_equity:.2f}"
             )
 
-        # update peak in current flow
         if current_equity > state["peak_equity"]:
             old_peak = state["peak_equity"]
             state["peak_equity"] = current_equity

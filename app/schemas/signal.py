@@ -17,7 +17,7 @@ class TradeSignal(BaseModel):
     confidence: float = 0.0
     reason: str = ""
     comment: str = "QuantLux-FX"
-    magic: int = 123456  # Default magic number
+    magic: int = 123456
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("action", mode="before")
