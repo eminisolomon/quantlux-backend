@@ -41,12 +41,9 @@ class RiskManager:
         open_positions_count: int | None = None,
     ) -> bool:
         """Validate all active risk rules."""
-        if not self.drawdown_manager.is_trading_allowed():
-            logger.warning(
-                msg.RISK_DRAWDOWN_BLOCKED.format(
-                    reason=self.drawdown_manager.halt_reason
-                )
-            )
+        is_allowed, halt_reason = await self.drawdown_manager.is_trading_allowed()
+        if not is_allowed:
+            logger.warning(msg.RISK_DRAWDOWN_BLOCKED.format(reason=halt_reason))
             return False
 
         if not settings.AUTO_TRADING:

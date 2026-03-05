@@ -1,12 +1,14 @@
 """Internal async queue processor for order execution."""
 
 import asyncio
-from asyncio import Queue
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, asdict
 
 from app.core.enums import SignalAction
 from app.core.protocols import BrokerProtocol
 from app.utils.logger import logger
+from app.core.redis_client import redis_client
+from app.core import messages as msg
 
 
 @dataclass
@@ -21,7 +23,17 @@ class OrderTask:
     magic_number: int | None = None
     position_id: str | None = None
     comment: str = ""
-    future: asyncio.Future | None = None
+
+    def to_dict(self):
+        d = asdict(self)
+        d["action"] = self.action.value
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict):
+        d["action"] = SignalAction(d["action"])
+        d.pop("future", None)
+        return cls(**d)
 
 
 class OrderQueue:
@@ -32,10 +44,10 @@ class OrderQueue:
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super().__new__(cls)
-            cls._instance.queue = Queue()
             cls._instance.is_running = False
             cls._instance.executor = None
             cls._instance.worker_task = None
+            cls._instance.queue_key = "quantlux:execution_queue"
         return cls._instance
 
     def initialize(self, executor: BrokerProtocol):
@@ -52,7 +64,7 @@ class OrderQueue:
 
         self.is_running = True
         self.worker_task = asyncio.create_task(self._process_queue())
-        logger.info("🟢 OrderQueue processor started")
+        logger.info("🟢 OrderQueue processor started (Redis)")
 
     async def stop(self):
         """Stop the queue worker and process remaining tasks."""
@@ -65,39 +77,38 @@ class OrderQueue:
                 pass
         logger.info("🔴 OrderQueue processor stopped")
 
-    async def enqueue_order(self, task: OrderTask) -> asyncio.Future:
-        """Add an order to the execution queue and return a future."""
-        loop = asyncio.get_running_loop()
-        task.future = loop.create_future()
+    async def enqueue_order(self, task: OrderTask) -> None:
+        """Add an order to the execution queue via Redis."""
+        redis = redis_client.redis
+        task_data = json.dumps(task.to_dict())
 
         if task.action == SignalAction.SELL and task.position_id:
             pass
 
-        await self.queue.put(task)
+        await redis.rpush(self.queue_key, task_data)
         logger.debug(f"Queued order: {task.action} {task.symbol}")
-        return task.future
 
     async def _process_queue(self):
         """Background task that pulls from queue and executes."""
+        redis = redis_client.redis
         while self.is_running:
             try:
-                task: OrderTask = await self.queue.get()
-                await self._execute_task(task)
-                self.queue.task_done()
-
-                await asyncio.sleep(0.5)
+                result = await redis.blpop(self.queue_key, timeout=1)
+                if result:
+                    _, task_data = result
+                    task_dict = json.loads(task_data)
+                    task = OrderTask.from_dict(task_dict)
+                    await self._execute_task(task)
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Error processing order queue task: {e}")
+                await asyncio.sleep(1)
 
     async def _execute_task(self, task: OrderTask):
         """Execute a single order task."""
         if not self.executor:
-            error_msg = "TradeExecutor not found. Cannot execute task."
-            logger.error(error_msg)
-            if task.future and not task.future.done():
-                task.future.set_exception(RuntimeError(error_msg))
+            logger.error("TradeExecutor not found. Cannot execute task.")
             return
 
         try:
@@ -126,12 +137,25 @@ class OrderQueue:
                     position_id=task.position_id
                 )
 
-            if task.future and not task.future.done():
-                task.future.set_result(result)
+            success = result and (result.get("success") or "positionId" in result)
+            if success:
+                price = result.get("price", 0.0) if result else 0.0
+                logger.info(
+                    msg.TRADE_SUCCESS.format(
+                        symbol=task.symbol,
+                        action=task.action.value,
+                        volume=task.volume,
+                        price=price,
+                    )
+                )
+            else:
+                error = result.get("error") if result else "Unknown error"
+                logger.error(
+                    msg.TRADE_EXECUTION_FAILED.format(symbol=task.symbol, error=error)
+                )
+
         except Exception as e:
             logger.error(f"Failed queued order execution: {e}")
-            if task.future and not task.future.done():
-                task.future.set_exception(e)
 
 
 order_queue = OrderQueue()

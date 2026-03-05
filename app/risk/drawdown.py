@@ -1,8 +1,10 @@
 """Drawdown protection: daily/total limits, auto-halt on breach."""
 
+import json
 from datetime import datetime
 
 from app.utils.logger import logger
+from app.core.redis_client import redis_client
 
 
 class DrawdownManager:
@@ -11,54 +13,97 @@ class DrawdownManager:
         max_daily_dd_pct: float = 5.0,
         max_total_dd_pct: float = 15.0,
         warning_threshold_pct: float = 75.0,  # % of limit before warning
+        account_id: str = "default",
     ):
         self.max_daily_dd = max_daily_dd_pct
         self.max_total_dd = max_total_dd_pct
         self.warning_threshold = warning_threshold_pct / 100.0
+        self.account_id = account_id
 
-        self.daily_start_equity: float = 0.0
-        self.peak_equity: float = 0.0
-        self.is_halted: bool = False
-        self.halt_reason: str = ""
-
-        self.last_reset_date: datetime = datetime.now().date()
+        self.key_ns = f"quantlux:drawdown:{account_id}"
 
         logger.info(
             f"DrawdownManager initialized: Daily={max_daily_dd_pct}%, Total={max_total_dd_pct}%"
         )
 
-    def initialize(self, starting_equity: float):
-        self.daily_start_equity = starting_equity
-        self.peak_equity = starting_equity
-        logger.info(f"Drawdown manager initialized with equity: ${starting_equity:.2f}")
+    async def _get_state(self) -> dict:
+        redis = redis_client.redis
+        state_str = await redis.get(f"{self.key_ns}:state")
+        if state_str:
+            return json.loads(state_str)
+        return {
+            "daily_start_equity": 0.0,
+            "peak_equity": 0.0,
+            "is_halted": False,
+            "halt_reason": "",
+            "last_reset_date": datetime.now().date().isoformat(),
+        }
 
-    def reset_daily(self, current_equity: float):
-        self.daily_start_equity = current_equity
-        self.last_reset_date = datetime.now().date()
+    async def _save_state(self, state: dict):
+        redis = redis_client.redis
+        await redis.set(f"{self.key_ns}:state", json.dumps(state))
+
+    async def initialize(self, starting_equity: float):
+        state = await self._get_state()
+        if state["peak_equity"] == 0.0:
+            state["daily_start_equity"] = starting_equity
+            state["peak_equity"] = starting_equity
+            await self._save_state(state)
+            logger.info(
+                f"Drawdown manager initialized with equity: ${starting_equity:.2f}"
+            )
+        else:
+            logger.info(
+                f"Drawdown manager state loaded from Redis. Peak: ${state['peak_equity']:.2f}"
+            )
+
+    async def reset_daily(self, current_equity: float):
+        state = await self._get_state()
+        state["daily_start_equity"] = current_equity
+        state["last_reset_date"] = datetime.now().date().isoformat()
+        await self._save_state(state)
         logger.debug(f"Daily drawdown reset. Starting equity: ${current_equity:.2f}")
 
-    def update_peak(self, current_equity: float):
-        if current_equity > self.peak_equity:
-            old_peak = self.peak_equity
-            self.peak_equity = current_equity
+    async def update_peak(self, current_equity: float):
+        state = await self._get_state()
+        if current_equity > state["peak_equity"]:
+            old_peak = state["peak_equity"]
+            state["peak_equity"] = current_equity
+            await self._save_state(state)
             logger.info(f"🎉 New equity peak! ${old_peak:.2f} → ${current_equity:.2f}")
 
-    def check_drawdown_limits(self, current_equity: float) -> dict:
+    async def check_drawdown_limits(self, current_equity: float) -> dict:
+        state = await self._get_state()
         current_date = datetime.now().date()
-        if current_date > self.last_reset_date:
-            self.reset_daily(current_equity)
+        last_reset_date = datetime.fromisoformat(state["last_reset_date"]).date()
 
-        self.update_peak(current_equity)
+        if current_date > last_reset_date:
+            state["daily_start_equity"] = current_equity
+            state["last_reset_date"] = current_date.isoformat()
+            await self._save_state(state)
+            logger.debug(
+                f"Daily drawdown reset. Starting equity: ${current_equity:.2f}"
+            )
 
-        if self.daily_start_equity > 0:
+        # update peak in current flow
+        if current_equity > state["peak_equity"]:
+            old_peak = state["peak_equity"]
+            state["peak_equity"] = current_equity
+            await self._save_state(state)
+            logger.info(f"🎉 New equity peak! ${old_peak:.2f} → ${current_equity:.2f}")
+
+        daily_start_equity = state["daily_start_equity"]
+        peak_equity = state["peak_equity"]
+
+        if daily_start_equity > 0:
             daily_dd = (
-                (self.daily_start_equity - current_equity) / self.daily_start_equity
+                (daily_start_equity - current_equity) / daily_start_equity
             ) * 100
         else:
             daily_dd = 0.0
 
-        if self.peak_equity > 0:
-            total_dd = ((self.peak_equity - current_equity) / self.peak_equity) * 100
+        if peak_equity > 0:
+            total_dd = ((peak_equity - current_equity) / peak_equity) * 100
         else:
             total_dd = 0.0
 
@@ -71,16 +116,18 @@ class DrawdownManager:
         }
 
         if daily_dd >= self.max_daily_dd:
-            self.is_halted = True
-            self.halt_reason = f"Daily drawdown limit breached: {daily_dd:.2f}%"
+            state["is_halted"] = True
+            state["halt_reason"] = f"Daily drawdown limit breached: {daily_dd:.2f}%"
+            await self._save_state(state)
             status["halt_trading"] = True
-            logger.critical(f"🛑 TRADING HALTED: {self.halt_reason}")
+            logger.critical(f"🛑 TRADING HALTED: {state['halt_reason']}")
 
         elif total_dd >= self.max_total_dd:
-            self.is_halted = True
-            self.halt_reason = f"Total drawdown limit breached: {total_dd:.2f}%"
+            state["is_halted"] = True
+            state["halt_reason"] = f"Total drawdown limit breached: {total_dd:.2f}%"
+            await self._save_state(state)
             status["halt_trading"] = True
-            logger.critical(f"🛑 TRADING HALTED: {self.halt_reason}")
+            logger.critical(f"🛑 TRADING HALTED: {state['halt_reason']}")
 
         elif daily_dd >= (self.max_daily_dd * self.warning_threshold):
             status["reduce_position_size"] = True
@@ -100,16 +147,20 @@ class DrawdownManager:
 
         return status
 
-    def is_trading_allowed(self) -> bool:
-        return not self.is_halted
+    async def is_trading_allowed(self) -> tuple[bool, str]:
+        state = await self._get_state()
+        return not state["is_halted"], state["halt_reason"]
 
-    def reset_halt(self):
+    async def reset_halt(self):
         logger.warning("⚠️ Manually resetting drawdown halt")
-        self.is_halted = False
-        self.halt_reason = ""
+        state = await self._get_state()
+        state["is_halted"] = False
+        state["halt_reason"] = ""
+        await self._save_state(state)
 
-    def get_status_summary(self, current_equity: float) -> str:
-        status = self.check_drawdown_limits(current_equity)
+    async def get_status_summary(self, current_equity: float) -> str:
+        status = await self.check_drawdown_limits(current_equity)
+        state = await self._get_state()
 
         summary = f"""
 📊 Drawdown Status
@@ -117,9 +168,9 @@ class DrawdownManager:
 Daily DD: {status["daily_dd"]:.2f}% (Limit: {self.max_daily_dd}%)
 Total DD: {status["total_dd"]:.2f}% (Limit: {self.max_total_dd}%)
 
-Peak Equity: ${self.peak_equity:.2f}
+Peak Equity: ${state.get('peak_equity', 0):.2f}
 Current: ${current_equity:.2f}
-Daily Start: ${self.daily_start_equity:.2f}
+Daily Start: ${state.get('daily_start_equity', 0):.2f}
 
 Trading: {"🛑 HALTED" if status["halt_trading"] else "✅ ALLOWED"}
         """.strip()

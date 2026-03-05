@@ -71,12 +71,12 @@ async def synchronize_state(
     try:
         await metaapi.initialize()
         initial_equity = await _fetch_equity(metaapi)
-        _sync_drawdown(drawdown, initial_equity)
-        _sync_tracker(tracker, initial_equity)
+        await _sync_drawdown(drawdown, initial_equity)
+        await _sync_tracker(tracker, initial_equity)
         logger.success(msg.SERVICE_SYNC.format(equity=initial_equity))
     except Exception as e:
         logger.warning(msg.SYNC_ERROR.format(error=e))
-        _sync_drawdown(drawdown, settings.DEFAULT_INITIAL_BALANCE)
+        await _sync_drawdown(drawdown, settings.DEFAULT_INITIAL_BALANCE)
 
 
 async def _fetch_equity(metaapi: MetaApiAdapter) -> float:
@@ -89,16 +89,19 @@ async def _fetch_equity(metaapi: MetaApiAdapter) -> float:
     return equity if equity > 0 else settings.DEFAULT_INITIAL_BALANCE
 
 
-def _sync_drawdown(drawdown: DrawdownManager, equity: float) -> None:
+async def _sync_drawdown(drawdown: DrawdownManager, equity: float) -> None:
     """Initialize the drawdown manager with the given equity."""
-    drawdown.initialize(equity)
+    await drawdown.initialize(equity)
 
 
-def _sync_tracker(tracker: AnalyticsService, equity: float) -> None:
+async def _sync_tracker(tracker: AnalyticsService, equity: float) -> None:
     """Seed the analytics service equity curve with the live starting equity."""
+    await tracker.initialize()
     tracker.current_equity = equity
     tracker.initial_balance = equity
     if not tracker.equity_curve:
         tracker.equity_curve = [equity]
     else:
-        tracker.equity_curve.append(equity)
+        # Avoid duplicate appending if the state already has it (usually tracked by the last trade)
+        if tracker.equity_curve[-1] != equity:
+            tracker.equity_curve.append(equity)

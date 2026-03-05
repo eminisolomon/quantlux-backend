@@ -45,7 +45,7 @@ class StrategyManager:
         if symbol in self.strategies:
             for strategy in self.strategies[symbol]:
                 try:
-                    if not strategy.check_risk():
+                    if not await strategy.check_risk():
                         continue
 
                     signal = await strategy.process_tick(tick)

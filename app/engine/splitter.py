@@ -70,7 +70,6 @@ class SplitOrderManager:
         base_comment: str,
     ) -> None:
         """Enqueue individual order tasks for each portion of the split volume."""
-        executed_count = 0
         num_orders = len(tp_levels)
 
         for i, (vol, tp) in enumerate(zip(volumes, tp_levels)):
@@ -86,23 +85,12 @@ class SplitOrderManager:
                 take_profit=tp,
                 comment=comment,
             )
-            future = await order_queue.enqueue_order(task_obj)
-            result = await future
+            await order_queue.enqueue_order(task_obj)
 
-            if result and (result.get("success") or "positionId" in result):
-                executed_count += 1
-                logger.info(
-                    msg.SPLIT_TRADE_SUCCESS.format(
-                        symbol=symbol, index=i + 1, total=num_orders, volume=vol, tp=tp
-                    )
+            logger.info(
+                msg.SPLIT_TRADE_SUCCESS.format(
+                    symbol=symbol, index=i + 1, total=num_orders, volume=vol, tp=tp
                 )
-            else:
-                error = result.get("error") if result else "Unknown error"
-                logger.error(
-                    msg.SPLIT_TRADE_FAILED.format(
-                        symbol=symbol, index=i + 1, total=num_orders, error=error
-                    )
-                )
+            )
 
-        if executed_count == num_orders:
-            logger.info(msg.ALL_SPLIT_SUCCESS.format(symbol=symbol))
+        logger.info(msg.ALL_SPLIT_SUCCESS.format(symbol=symbol))

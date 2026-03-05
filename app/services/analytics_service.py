@@ -21,38 +21,33 @@ from app.utils.logger import logger
 
 
 class AnalyticsService:
-    def __init__(
-        self, storage_path: str = "data/trades.json", initial_balance: float = 10000.0
-    ):
-        self.storage_path = Path(storage_path)
+    def __init__(self, initial_balance: float = 10000.0, account_id: str = "default"):
         self.initial_balance = initial_balance
+        self.account_id = account_id
         self.trades: list[Trade] = []
         self.equity_curve: list[float] = [initial_balance]
         self.current_equity = initial_balance
+        self.redis_key = f"quantlux:{self.account_id}:analytics:trades"
 
         logger.info(msg.TRACKER_INIT)
-        self._load_trades()
 
-    def _load_trades(self) -> None:
-        """Load historical trades from storage."""
-        if not self.storage_path.exists():
+    async def initialize(self) -> None:
+        """Load historical trades from Redis asynchronously."""
+        from app.core.redis_client import redis_client
+
+        redis = redis_client.redis
+
+        trades_data = await redis.lrange(self.redis_key, 0, -1)
+        if not trades_data:
             logger.info(msg.TRACKER_NO_HISTORY)
             return
 
-        trades = self._read_trades_from_file()
-        if trades is not None:
-            self.trades = trades
+        try:
+            self.trades = [Trade.model_validate(json.loads(t)) for t in trades_data]
             self._rebuild_equity_curve()
             logger.info(msg.TRACKER_LOADED.format(count=len(self.trades)))
-
-    def _read_trades_from_file(self) -> list | None:
-        """Deserialize trades from JSON storage."""
-        try:
-            with open(self.storage_path) as f:
-                return [Trade.model_validate(t) for t in json.load(f)]
         except Exception as e:
             logger.error(msg.TRACKER_LOAD_ERROR.format(error=e))
-            return None
 
     def _rebuild_equity_curve(self) -> None:
         """Replay trades to reconstruct the equity curve from the initial balance."""
@@ -62,30 +57,32 @@ class AnalyticsService:
             self.current_equity += t.profit
             self.equity_curve.append(self.current_equity)
 
-    def _save_trades(self) -> None:
-        """Persist current trades list to JSON storage."""
-        try:
-            self._ensure_storage_dir()
-            with open(self.storage_path, "w") as f:
-                json.dump([t.model_dump() for t in self.trades], f, indent=4)
-        except Exception as e:
-            logger.error(msg.TRACKER_SAVE_ERROR.format(error=e))
+    async def load_history(self, trades: list[Trade]) -> None:
+        """Populate tracker with a list of closed trades and save to Redis."""
+        from app.core.redis_client import redis_client
 
-    def _ensure_storage_dir(self) -> None:
-        """Create parent directories for storage path if they don't exist."""
-        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+        redis = redis_client.redis
 
-    def load_history(self, trades: list[Trade]) -> None:
-        """Populate tracker with a list of closed trades (from MetaApi or any source)."""
-        self.trades = []
-        self.equity_curve = [self.initial_balance]
-        self.current_equity = self.initial_balance
-        for t in trades:
-            self.add_trade(t)
+        self.trades = trades
+        self._rebuild_equity_curve()
+
+        # Clear and repopulate Redis list atomically
+        pipe = redis.pipeline()
+        pipe.delete(self.redis_key)
+        if trades:
+            pipe.rpush(
+                self.redis_key, *[t.model_dump_json(by_alias=True) for t in trades]
+            )
+        await pipe.execute()
+
         logger.info(msg.TRACKER_LOADED.format(count=len(self.trades)))
 
-    def add_trade(self, trade: Trade):
-        """Record a new trade and update metrics."""
+    async def add_trade(self, trade: Trade):
+        """Record a new trade and update metrics in Redis."""
+        from app.core.redis_client import redis_client
+
+        redis = redis_client.redis
+
         self.trades.append(trade)
         new_equity = self.equity_curve[-1] + trade.profit
         self.equity_curve.append(new_equity)
@@ -94,7 +91,7 @@ class AnalyticsService:
         logger.info(
             msg.TRACKER_TRADE_RECORDED.format(symbol=trade.symbol, profit=trade.profit)
         )
-        self._save_trades()
+        await redis.rpush(self.redis_key, trade.model_dump_json(by_alias=True))
 
     def get_stats(self, days: int | None = None) -> PerformanceStats:
         """Get performance statistics for last N days."""
